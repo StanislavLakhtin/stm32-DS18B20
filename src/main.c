@@ -7,13 +7,13 @@
 /* Set STM32 to 72 MHz. */
 static void clock_setup(void)
 {
-	rcc_clock_setup_in_hse_8mhz_out_72mhz();
+    rcc_clock_setup_in_hse_8mhz_out_72mhz();
 
-	/* Enable GPIOB, GPIOC, and AFIO clocks. */
+    /* Enable GPIOB, GPIOC, and AFIO clocks. */
     rcc_periph_clock_enable(RCC_GPIOA);
-	rcc_periph_clock_enable(RCC_GPIOB);
-	rcc_periph_clock_enable(RCC_GPIOC);
-	rcc_periph_clock_enable(RCC_AFIO);
+    rcc_periph_clock_enable(RCC_GPIOB);
+    rcc_periph_clock_enable(RCC_GPIOC);
+    rcc_periph_clock_enable(RCC_AFIO);
 
     /* Enable clocks for USART2. */
     rcc_periph_clock_enable(RCC_USART2);

@@ -5,5 +5,5 @@ set mem inaccessible-by-default off
 target extended-remote /dev/cu.usbmodemBED9AFE1
 attach 1
 load ./build/stm32-DS18x20.elf
-file ./build/stm32_DS18x20.elf
+file ./build/stm32-DS18x20.elf
 start

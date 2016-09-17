@@ -38,7 +38,7 @@ static void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t s
 
 static void gpio_setup(void) {
     /* Setup GPIO pin GPIO_USART2_TX. */
-    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ,
+    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ,
                   GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART2_TX);
 
     /* Set GPIO8 (in GPIO port A) to 'output push-pull'. */
@@ -57,12 +57,12 @@ static void gpio_setup(void) {
 
 int oneWireReset(uint32_t usart) {
     int oneWireDevices = 0;
-    usart_setup(usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
+    usart_setup(usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
     usart_send_blocking(usart, 0xf0);
     while (!usart_get_flag(usart, USART_SR_TC));
     oneWireDevices = usart_recv(usart);
 
-    usart_setup(usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
+    usart_setup(usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
     return oneWireDevices;
 }
 

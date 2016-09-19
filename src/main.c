@@ -38,8 +38,8 @@ static void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t s
 
 static void gpio_setup(void) {
     /* Setup GPIO pin GPIO_USART2_TX. */
-    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ,
-                  GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART2_TX);
+    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_10_MHZ,
+                  GPIO_CNF_OUTPUT_ALTFN_OPENDRAIN, GPIO_USART2_TX);
 
     /* Set GPIO8 (in GPIO port A) to 'output push-pull'. */
     gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ,
@@ -63,22 +63,21 @@ int oneWireReset(uint32_t usart) {
     oneWireDevices = usart_recv(usart);
 
     usart_setup(usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
-    return oneWireDevices;
+    return oneWireDevices != 0xf0 ? 1 : 0;
 }
 
 int main(void) {
     clock_setup();
     gpio_setup();
-    int owDev = oneWireReset(USART2);
 
     int i;
     /* Blink the LEDs (PC13 and PB4) on the board. */
     while (1) {
+        int owDev = oneWireReset(USART2);
         int k = 10 + owDev;
         while (k > 0) {
-            //usart_send_blocking(USART2, k + '0');    /* USART2: Send byte. */
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
-            uint32_t p = 800000 * k;
+            uint32_t p = 1600000 * k;
             for (i = 0; i < p; i++)    /* Wait a bit. */
                     __asm__("nop");
             k--;

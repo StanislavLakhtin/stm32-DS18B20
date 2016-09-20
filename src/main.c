@@ -1,7 +1,6 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/usart.h>
-
+#include "OneWire.h"
 
 /* Set STM32 to 72 MHz. */
 static void clock_setup(void) {
@@ -14,26 +13,6 @@ static void clock_setup(void) {
 
     /* Enable clocks for USART2. */
     rcc_periph_clock_enable(RCC_USART2);
-}
-
-void usart_enable_halfduplex(uint32_t usart) {
-    USART_CR3(usart) |= USART_CR3_HDSEL;
-}
-
-static void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
-                        uint32_t flowcontrol) {
-    usart_disable(usart);
-    /* Setup parameters. */
-    usart_set_baudrate(usart, baud);
-    usart_set_databits(usart, bits);
-    usart_set_stopbits(usart, stopbits);
-    usart_set_mode(usart, mode);
-    usart_set_parity(usart, parity);
-    usart_set_flow_control(usart, flowcontrol);
-
-    /* Finally enable the USART. */
-    usart_enable_halfduplex(usart);
-    usart_enable(usart);
 }
 
 static void gpio_setup(void) {
@@ -55,17 +34,6 @@ static void gpio_setup(void) {
     gpio_clear(GPIOC, GPIO13);    /* Switch on LED. */
 }
 
-int oneWireReset(uint32_t usart) {
-    int oneWireDevices = 0;
-    usart_setup(usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
-    usart_send_blocking(usart, 0xf0);
-    while (!usart_get_flag(usart, USART_SR_TC));
-    oneWireDevices = usart_recv(usart);
-
-    usart_setup(usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
-    return oneWireDevices != 0xf0 ? 1 : 0;
-}
-
 int main(void) {
     clock_setup();
     gpio_setup();
@@ -73,11 +41,11 @@ int main(void) {
     int i;
     /* Blink the LEDs (PC13 and PB4) on the board. */
     while (1) {
-        int owDev = oneWireReset(USART2);
-        int k = 10 + owDev;
+        OneWireSend(USART2, 0xF0, 0x00,0x00, 1);
+        int k = 20;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
-            uint32_t p = 1600000 * k;
+            uint32_t p = 800000;
             for (i = 0; i < p; i++)    /* Wait a bit. */
                     __asm__("nop");
             k--;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5.0)
-project(stm32-DS18x20 C CXX ASM)
+project(stm32-DS18x20)
 
 IF(NOT CMAKE_CROSSCOMPILING)
     message(FATAL_ERROR "Cross compiling only. Please use -DCMAKE_TOOLCHAIN_FILE=/PATH/TO/TOOLCHAIN_FILE .")
@@ -11,12 +11,11 @@ set(LIBOPENCM3_DIR ${CMAKE_SOURCE_DIR}/libopencm3)
 add_custom_target(libopencm3 make WORKING_DIRECTORY ${LIBOPENCM3_DIR})
 link_directories(${LIBOPENCM3_DIR}/lib)
 
-file(GLOB_RECURSE USER_SOURCES src/*.c *.h)
+#file(GLOB_RECURSE USER_SOURCES src/*.c)
 
 include_directories(
         ${LIBOPENCM3_DIR}/include
         inc)
-
 
 #CFLAGS="-fshort-wchar" make    # compile lib with 2 byte wide wchar_t
 

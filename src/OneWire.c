@@ -93,6 +93,16 @@ void owSend(uint32_t usart, uint8_t *buffer) {
         usart_send_blocking(usart, buffer[i]);
 }
 
+uint8_t owRead(uint32_t usart) {
+    usart_send_blocking(usart, WIRE_1);
+    return (usart_recv_blocking(usart)==WIRE_1)?1:0;
+}
+
+uint8_t owSendBite(uint32_t usart, uint8_t data){
+    uint8_t d = (data==0)?WIRE_0:WIRE_1;
+    usart_send_blocking(usart, d);
+}
+
 uint8_t OneWireSend(uint32_t usart, uint8_t command,
                     uint8_t *data, uint8_t dLength, uint8_t reset) {
     uint8_t buffer[8];
@@ -100,7 +110,12 @@ uint8_t OneWireSend(uint32_t usart, uint8_t command,
     if (reset)
         OneWireReset(usart);
     owSend(usart, buffer);
-
+    int i;
+    for (i=0; i<64;i++) {
+        uint8_t orig = owRead(usart);
+        uint8_t inverse = owRead(usart);
+        owSendBite(usart, orig);
+    }
 }
 
 #ifdef ONEWIRE_CRC_TABLE

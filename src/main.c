@@ -42,7 +42,7 @@ int main(void) {
     /* Blink the LEDs (PC13 and PB4) on the board. */
     while (1) {
         OneWireSend(USART2, 0xF0, 0x00,0x00, 1);
-        int k = 20;
+        int k = 10;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
             uint32_t p = 800000;

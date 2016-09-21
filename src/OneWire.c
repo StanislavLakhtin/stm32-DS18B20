@@ -13,8 +13,12 @@
 
  */
 
-/// Метод реализует переключение работы USART в half-duplex режим
+/// Метод реализует переключение работы USART в half-duplex режим. Метод не работает для 1wire реализации
 void usart_enable_halfduplex(uint32_t usart) {
+    USART_CR2(usart) &= ~USART_CR2_LINEN;
+    USART_CR2(usart) &= ~USART_CR2_CLKEN;
+    USART_CR3(usart) &= ~USART_CR3_SCEN;
+    USART_CR3(usart) &= ~USART_CR3_IREN;
     USART_CR3(usart) |= USART_CR3_HDSEL;
 }
 
@@ -40,7 +44,7 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
     usart_set_flow_control(usart, flowcontrol);
 
     // Разрешить usart
-    usart_enable_halfduplex(usart);
+//    usart_enable_halfduplex(usart);
     usart_enable(usart);
 }
 
@@ -52,12 +56,13 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
 int OneWireReset(uint32_t usart) {
     int oneWireDevices = 0;
     usart_setup(usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
+
     usart_send_blocking(usart, 0xf0);
     while (!usart_get_flag(usart, USART_SR_TC));
     oneWireDevices = usart_recv(usart);
 
     usart_setup(usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
-    return oneWireDevices != 0xf0 ? 1 : 0;
+    return (oneWireDevices > 0x10 && oneWireDevices < 0x90) ? 1 : 0;
 }
 
 void byteToBits(uint8_t ow_byte, uint8_t *bits) {
@@ -83,23 +88,25 @@ uint8_t bitsToByte(uint8_t *bits) {
         }
         bits++;
     }
-
     return target_byte;
 }
 
 void owSend(uint32_t usart, uint8_t *buffer) {
     int i;
-    for (i=0; i<8; i++)
-        usart_send_blocking(usart, buffer[i]);
+    for (i = 0; i < 8; i++) {
+        usart_wait_send_ready(usart);
+        usart_send(usart, buffer[i]);
+    }
 }
 
 uint8_t owRead(uint32_t usart) {
     usart_send_blocking(usart, WIRE_1);
-    return (usart_recv_blocking(usart)==WIRE_1)?1:0;
+    uint8_t recv = usart_recv(usart);
+    return (recv == WIRE_1) ? 1 : 0;
 }
 
-uint8_t owSendBite(uint32_t usart, uint8_t data){
-    uint8_t d = (data==0)?WIRE_0:WIRE_1;
+void owSendBite(uint32_t usart, uint8_t data) {
+    uint8_t d = (data == 0) ? WIRE_0 : WIRE_1;
     usart_send_blocking(usart, d);
 }
 
@@ -111,7 +118,7 @@ uint8_t OneWireSend(uint32_t usart, uint8_t command,
         OneWireReset(usart);
     owSend(usart, buffer);
     int i;
-    for (i=0; i<64;i++) {
+    for (i = 0; i < 64; i++) {
         uint8_t orig = owRead(usart);
         uint8_t inverse = owRead(usart);
         owSendBite(usart, orig);

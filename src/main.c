@@ -51,7 +51,8 @@ int main(void) {
     /* Blink the LEDs (PC13 and PB4) on the board. */
     while (1) {
         uint8_t currentROM[8];
-        printf(" attempt %lu, 1wire init said: %x\n", step, OneWireReset(USART3));
+        //printf(" attempt %lu, 1wire init said: %x\n", step, );
+        OneWireReset(USART3);
         OneWireSearchNext(USART3,currentROM);
         int k = 10;
         while (k > 0) {

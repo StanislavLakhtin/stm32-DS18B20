@@ -29,7 +29,6 @@ void usart3_isr(void) {
 
         /* Retrieve the data from the peripheral. */
         rc_buffer = usart_recv_blocking(USART3);
-        printf("%x", rc_buffer);
         recvFlag = false;
     }
 }
@@ -91,7 +90,7 @@ uint8_t owReadSlot(uint16_t data) {
 }
 
 uint8_t owEchoRead() {
-    //while (recvFlag);
+    while (recvFlag);
     return rc_buffer;
 }
 
@@ -195,7 +194,7 @@ uint8_t onewire_crc_update(uint8_t crc, uint8_t b) {
 }
 #endif
 
-int _write(int file, char *ptr, int len) {
+/*int _write(int file, char *ptr, int len) {
     int i;
 
     if (file == 1) {
@@ -205,4 +204,4 @@ int _write(int file, char *ptr, int len) {
     }
     errno = EIO;
     return -1;
-}
+}*/

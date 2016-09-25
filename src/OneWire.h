@@ -12,8 +12,8 @@
  */
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
-#include <stdio.h>
-#include <errno.h>
+//#include <stdio.h>
+//#include <errno.h>
 
 #ifndef STM32_DS18X20_ONEWIRE_H
 #define STM32_DS18X20_ONEWIRE_H

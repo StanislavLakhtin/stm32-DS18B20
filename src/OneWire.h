@@ -11,20 +11,36 @@
 
  */
 #include <libopencm3/stm32/usart.h>
+#include <libopencm3/cm3/nvic.h>
+#include <stdio.h>
+#include <errno.h>
 
 #ifndef STM32_DS18X20_ONEWIRE_H
 #define STM32_DS18X20_ONEWIRE_H
 
+#define ONEWIRE_SEARCH 0xf0
+
 #define WIRE_0	0x00
 #define WIRE_1	0xff
+#define OW_READ 0xff
+
+#define USART_CONSOLE USART2
+
+volatile static uint16_t rc_buffer = 0x00;
+volatile static bool recvFlag = false;
+
+volatile static uint8_t searchBiteToRead = 0;
 
 void usart_enable_halfduplex(uint32_t usart);
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity, uint32_t flowcontrol);
-void bytetoBits(uint8_t ow_byte, uint8_t *bits);
 uint8_t bitsToByte(uint8_t *bits);
 int OneWireReset(uint32_t usart);
-uint8_t OneWireSend(uint32_t usart, uint8_t command,
-                    uint8_t *data, uint8_t dLength, uint8_t reset);
+void OneWireSearchNext(uint32_t usart, uint8_t *data);
+int _write(int file, char *ptr, int len);
+void owSend(uint32_t usart, uint16_t data);
+void owSendByte(uint32_t usart, uint8_t *data);
+
+uint8_t owEchoRead();
 
 
 

@@ -22,6 +22,18 @@ void usart_enable_halfduplex(uint32_t usart) {
     USART_CR3(usart) |= USART_CR3_HDSEL;
 }
 
+void usart3_isr(void) {
+    /* Check if we were called because of RXNE. */
+    if ((recvFlag) && ((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
+
+        /* Retrieve the data from the peripheral. */
+        rc_buffer = usart_recv_blocking(USART3);
+        printf("%x", rc_buffer);
+        recvFlag = false;
+    }
+}
+
 /** Метод реализует переключение выбранного USART в нужный режим
  * @param[in] usart Выбранный аппаратный usart -- (USART1, USART2, etc...)
  * @param[in] baud Скорость в бодах (9600, 115200, etc...)
@@ -43,8 +55,12 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
     usart_set_parity(usart, parity);
     usart_set_flow_control(usart, flowcontrol);
 
+    /* Enable USART1 Receive interrupt. */
+    usart_enable_rx_interrupt(usart);
+    nvic_enable_irq(NVIC_USART3_IRQ); //переделать на дефайны для любого USART
+
     // Разрешить usart
-//    usart_enable_halfduplex(usart);
+    usart_enable_halfduplex(usart);
     usart_enable(usart);
 }
 
@@ -57,15 +73,41 @@ int OneWireReset(uint32_t usart) {
     int oneWireDevices = 0;
     usart_setup(usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
-    usart_send_blocking(usart, 0xf0);
-    while (!usart_get_flag(usart, USART_SR_TC));
-    oneWireDevices = usart_recv(usart);
+    owSend(usart, 0xF0); // Send RESET
+    oneWireDevices = owEchoRead(); //Wait PRESENCE on the bus
 
     usart_setup(usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
-    return (oneWireDevices > 0x10 && oneWireDevices < 0x90) ? 1 : 0;
+    return oneWireDevices;//(oneWireDevices > 0x10 && oneWireDevices < 0x90) ? 1 : 0;
 }
 
-void byteToBits(uint8_t ow_byte, uint8_t *bits) {
+void owSend(uint32_t usart, uint16_t data) {
+    recvFlag = true;
+    usart_send(usart, data);
+    while (!usart_get_flag(usart, USART_SR_TC));
+}
+
+uint8_t owReadSlot(uint16_t data) {
+    return (data == OW_READ) ? 1 : 0;
+}
+
+uint8_t owEchoRead() {
+    //while (recvFlag);
+    return rc_buffer;
+}
+
+/**
+ * Метод пересылает последовательно 8 байт, начиная с адреса в data
+ * @param usart -- выбранный для эмуляции 1wire USART
+ * @param data -- указатель на данные
+ */
+void owSendByte(uint32_t usart, uint8_t *data) {
+    int i;
+    for (i = 0; i < 8; ++i) {
+        owSend(usart, data[i]);
+    }
+}
+
+uint8_t* byteToBits(uint8_t ow_byte, uint8_t *bits) {
     uint8_t i;
     for (i = 0; i < 8; i++) {
         if (ow_byte & 0x01) {
@@ -76,6 +118,7 @@ void byteToBits(uint8_t ow_byte, uint8_t *bits) {
         bits++;
         ow_byte = ow_byte >> 1;
     }
+    return bits;
 }
 
 uint8_t bitsToByte(uint8_t *bits) {
@@ -91,37 +134,26 @@ uint8_t bitsToByte(uint8_t *bits) {
     return target_byte;
 }
 
-void owSend(uint32_t usart, uint8_t *buffer) {
-    int i;
-    for (i = 0; i < 8; i++) {
-        usart_wait_send_ready(usart);
-        usart_send(usart, buffer[i]);
-    }
-}
 
-uint8_t owRead(uint32_t usart) {
-    usart_send_blocking(usart, WIRE_1);
-    uint8_t recv = usart_recv(usart);
-    return (recv == WIRE_1) ? 1 : 0;
-}
-
-void owSendBite(uint32_t usart, uint8_t data) {
-    uint8_t d = (data == 0) ? WIRE_0 : WIRE_1;
-    usart_send_blocking(usart, d);
-}
-
-uint8_t OneWireSend(uint32_t usart, uint8_t command,
-                    uint8_t *data, uint8_t dLength, uint8_t reset) {
-    uint8_t buffer[8];
-    byteToBits(command, buffer);
-    if (reset)
-        OneWireReset(usart);
-    owSend(usart, buffer);
-    int i;
-    for (i = 0; i < 64; i++) {
-        uint8_t orig = owRead(usart);
-        uint8_t inverse = owRead(usart);
-        owSendBite(usart, orig);
+/**
+ * Метод поиска СЛЕДУЮЩЕГО устройства на шине 1Wire
+ * Если были возвращены все возможные устройства, циклически возвращается первое
+ * @param usart -- выбранный USART для эмуляции работы 1wire
+ * @param data -- 8 байтовый буффер для возврата значения ROM конкретного устройства
+ */
+void OneWireSearchNext(uint32_t usart, uint8_t *data) {
+    uint8_t buffer[8], sbyte = 0, sbite = 0, cBit0, cBit1;
+    searchBiteToRead = 0;
+    byteToBits(ONEWIRE_SEARCH, buffer);
+    owSendByte(usart, buffer);
+    while (searchBiteToRead < 64) {
+        owSend(usart, OW_READ);
+        cBit0 = owReadSlot(owEchoRead());
+        owSend(usart, OW_READ);
+        cBit1 = owReadSlot(owEchoRead());
+        uint8_t selected = (cBit0 == 0) ? 0x00 : 0xFF;
+        owSend(usart, selected);
+        searchBiteToRead++;
     }
 }
 
@@ -162,3 +194,15 @@ uint8_t onewire_crc_update(uint8_t crc, uint8_t b) {
   return crc;
 }
 #endif
+
+int _write(int file, char *ptr, int len) {
+    int i;
+
+    if (file == 1) {
+        for (i = 0; i < len; i++)
+            usart_send_blocking(USART_CONSOLE, ptr[i]);
+        return i;
+    }
+    errno = EIO;
+    return -1;
+}

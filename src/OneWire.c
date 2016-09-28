@@ -180,7 +180,7 @@ void owSendByte(OneWire *ow, uint8_t d) {
     byteToBits(d, data);
     int i;
     for (i = 0; i < 8; ++i) {
-        owSend(ow->usart, data[i]);
+        owSend(ow, data[i]);
     }
 }
 
@@ -225,7 +225,7 @@ void owSearchCmd(OneWire *ow) {
         ow->ids[i] = 0x00;
     while (devNum < MAXDEVICES_ON_THE_BUS && forkBite < 64) {
         // посылка команды ОЧЕРЕДНОГО устройства на поиск
-        owSendByte(ow->usart, ONEWIRE_SEARCH);
+        owSendByte(ow, ONEWIRE_SEARCH);
         devROMId = forkROMId; // если у нас была информация с предыдущего цикла чтения, то мы переносим её в накапливаемую
         // будем двигаться от младшего бита к старшему до тех пор, пока не достигнем старшего или пока не достигнем
         // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
@@ -235,9 +235,9 @@ void owSearchCmd(OneWire *ow) {
             // в соответствии с логикой читаем бит посылая два цикла чтения
             // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
             uint8_t cB, cB_inverse, sB;
-            owSend(ow->usart, OW_READ); // чтение прямого бита
+            owSend(ow, OW_READ); // чтение прямого бита
             cB = owReadSlot(owEchoRead(ow));
-            owSend(ow->usart, OW_READ); // чтение инверсного бита
+            owSend(ow, OW_READ); // чтение инверсного бита
             cB_inverse = owReadSlot(owEchoRead(ow));
             if ((cB == cB_inverse)) {
                 // был конфликт -- биты НЕсовпали у нескольких устройств
@@ -254,7 +254,7 @@ void owSearchCmd(OneWire *ow) {
             // сохраняем бит
             devROMId |= sB << b;
             uint8_t selected = (cB == 0) ? WIRE_0 : WIRE_1;
-            owSend(ow->usart, selected);
+            owSend(ow, selected);
             b++;
         }
     }

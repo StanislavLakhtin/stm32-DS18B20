@@ -13,6 +13,68 @@
 
  */
 
+
+#ifdef ONEWIRE_USART5
+void usart5_isr(void) {
+    /* Check if we were called because of RXNE. */
+    if ((recvFlag[4]) && ((USART_CR1(USART5) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART5) & USART_SR_RXNE) != 0)) {
+
+        /* Retrieve the data from the peripheral. */
+        rc_buffer[4] = usart_recv_blocking(USART5);
+        recvFlag[4] = false;
+    }
+}
+#endif
+#ifdef ONEWIRE_USART4
+void usart4_isr(void) {
+    /* Check if we were called because of RXNE. */
+    if ((recvFlag[3]) && ((USART_CR1(USART4) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART4) & USART_SR_RXNE) != 0)) {
+
+        /* Retrieve the data from the peripheral. */
+        rc_buffer[3] = usart_recv_blocking(USART4);
+        recvFlag[3] = false;
+    }
+}
+#endif
+#ifdef ONEWIRE_USART3
+void usart3_isr(void) {
+    /* Check if we were called because of RXNE. */
+    if ((recvFlag[2]) && ((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
+
+        /* Retrieve the data from the peripheral. */
+        rc_buffer[2] = usart_recv_blocking(USART3);
+        recvFlag[2] = false;
+    }
+}
+#endif
+#ifdef ONEWIRE_USART2
+void usart2_isr(void) {
+    /* Check if we were called because of RXNE. */
+    if ((recvFlag[1]) && ((USART_CR1(USART2) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART2) & USART_SR_RXNE) != 0)) {
+
+        /* Retrieve the data from the peripheral. */
+        rc_buffer[1] = usart_recv_blocking(USART2);
+        recvFlag[1] = false;
+    }
+}
+#endif
+#ifdef ONEWIRE_USART1
+void usart1_isr(void) {
+    /* Check if we were called because of RXNE. */
+    if ((recvFlag[0]) && ((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
+
+        /* Retrieve the data from the peripheral. */
+        rc_buffer[0] = usart_recv_blocking(USART1);
+        recvFlag[0] = false;
+    }
+}
+#endif
+
 /// Метод реализует переключение работы USART в half-duplex режим. Метод не работает для 1wire реализации
 void usart_enable_halfduplex(uint32_t usart) {
     USART_CR2(usart) &= ~USART_CR2_LINEN;
@@ -20,17 +82,6 @@ void usart_enable_halfduplex(uint32_t usart) {
     USART_CR3(usart) &= ~USART_CR3_SCEN;
     USART_CR3(usart) &= ~USART_CR3_IREN;
     USART_CR3(usart) |= USART_CR3_HDSEL;
-}
-
-void usart3_isr(void) {
-    /* Check if we were called because of RXNE. */
-    if ((recvFlag) && ((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
-
-        /* Retrieve the data from the peripheral. */
-        rc_buffer = usart_recv_blocking(USART3);
-        recvFlag = false;
-    }
 }
 
 /** Метод реализует переключение выбранного USART в нужный режим
@@ -63,50 +114,77 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
     usart_enable(usart);
 }
 
+
+void owInit(OneWire *ow) {
+    int i = 0;
+    for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++)
+        ow->ids[i] = 0x00;
+}
+
 /** Реализация RESET на шине 1wire
  *
  * @param usart -- выбранный для реализации 1wire usart
  * @return Возвращает 1 если на шине кто-то есть и 0 в противном случае
  */
-int OneWireReset(uint32_t usart) {
+
+int owReset(OneWire *ow) {
     int oneWireDevices = 0;
-    usart_setup(usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
+    usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
-    owSend(usart, 0xF0); // Send RESET
-    oneWireDevices = owEchoRead(); //Wait PRESENCE on the bus
+    owSend(ow, 0xF0); // Send RESET
+    oneWireDevices = owEchoRead(ow); //Wait PRESENCE on the bus
 
-    usart_setup(usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
+    usart_setup(ow->usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
     return oneWireDevices;//(oneWireDevices > 0x10 && oneWireDevices < 0x90) ? 1 : 0;
 }
 
-void owSend(uint32_t usart, uint16_t data) {
-    recvFlag = true;
-    usart_send(usart, data);
-    while (!usart_get_flag(usart, USART_SR_TC));
+void owSend(OneWire *ow, uint16_t data) {
+    recvFlag[getUsartIndex(ow->usart)] = true;
+    usart_send(ow->usart, data);
+    while (!usart_get_flag(ow->usart, USART_SR_TC));
 }
 
 uint8_t owReadSlot(uint16_t data) {
     return (data == OW_READ) ? 1 : 0;
 }
 
-uint8_t owEchoRead() {
-    while (recvFlag);
-    return rc_buffer;
+uint8_t owEchoRead(OneWire *ow) {
+    uint8_t i = getUsartIndex(ow->usart);
+    while (recvFlag[i]);
+    return rc_buffer[i];
+}
+
+uint8_t getUsartIndex(uint32_t usart) {
+    switch (usart) {
+        case (USART1):
+            return 0;
+        case (USART2):
+            return 1;
+        case (USART3):
+            return 2;
+        case (UART4):
+            return 3;
+        case (UART5):
+            return 4;
+    }
+    return -1;
 }
 
 /**
- * Метод пересылает последовательно 8 байт, начиная с адреса в data
+ * Метод пересылает последовательно 8 байт по одному на каждый бит в data
  * @param usart -- выбранный для эмуляции 1wire USART
- * @param data -- указатель на данные
+ * @param d -- данные
  */
-void owSendByte(uint32_t usart, uint8_t *data) {
+void owSendByte(OneWire *ow, uint8_t d) {
+    uint8_t data[8];
+    byteToBits(d, data);
     int i;
     for (i = 0; i < 8; ++i) {
-        owSend(usart, data[i]);
+        owSend(ow->usart, data[i]);
     }
 }
 
-uint8_t* byteToBits(uint8_t ow_byte, uint8_t *bits) {
+uint8_t *byteToBits(uint8_t ow_byte, uint8_t *bits) {
     uint8_t i;
     for (i = 0; i < 8; i++) {
         if (ow_byte & 0x01) {
@@ -135,66 +213,55 @@ uint8_t bitsToByte(uint8_t *bits) {
 
 
 /**
- * Метод поиска СЛЕДУЮЩЕГО устройства на шине 1Wire
+ * Метод поиска устройств на шине 1Wire
  * Если были возвращены все возможные устройства, циклически возвращается первое
- * @param usart -- выбранный USART для эмуляции работы 1wire
- * @param data -- 8 байтовый буффер для возврата значения ROM конкретного устройства
  */
-void OneWireSearchNext(uint32_t usart, uint8_t *data) {
-    uint8_t buffer[8], sbyte = 0, sbite = 0, cBit0, cBit1;
-    searchBiteToRead = 0;
-    byteToBits(ONEWIRE_SEARCH, buffer);
-    owSendByte(usart, buffer);
-    while (searchBiteToRead < 64) {
-        owSend(usart, OW_READ);
-        cBit0 = owReadSlot(owEchoRead());
-        owSend(usart, OW_READ);
-        cBit1 = owReadSlot(owEchoRead());
-        uint8_t selected = (cBit0 == 0) ? 0x00 : 0xFF;
-        owSend(usart, selected);
-        searchBiteToRead++;
+void owSearchCmd(OneWire *ow) {
+    uint8_t i, devNum = 0, b = 0;
+    uint64_t devROMId = 0x00; // Здесь будет накапливаться побитно ROM ID очередного устройства
+    uint64_t forkROMId = 0x00, forkBite = 0; // Здесь будет сохранена информация, когда произойдёт fork во время поиска ID
+    //очищаем все ранее найденные устройства
+    for (i = 0; i < MAXDEVICES_ON_THE_BUS; ++i)
+        ow->ids[i] = 0x00;
+    while (devNum < MAXDEVICES_ON_THE_BUS && forkBite < 64) {
+        // посылка команды ОЧЕРЕДНОГО устройства на поиск
+        owSendByte(ow->usart, ONEWIRE_SEARCH);
+        devROMId = forkROMId; // если у нас была информация с предыдущего цикла чтения, то мы переносим её в накапливаемую
+        // будем двигаться от младшего бита к старшему до тех пор, пока не достигнем старшего или пока не достигнем
+        // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
+        // будут найдены столько, сколько было определено MAXDEVICES_ON_THE_BUS
+        b = forkBite; // если с прошлого цикла поиска мы находимся не на нулевом бите
+        while (b < 64) {
+            // в соответствии с логикой читаем бит посылая два цикла чтения
+            // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
+            uint8_t cB, cB_inverse, sB;
+            owSend(ow->usart, OW_READ); // чтение прямого бита
+            cB = owReadSlot(owEchoRead(ow));
+            owSend(ow->usart, OW_READ); // чтение инверсного бита
+            cB_inverse = owReadSlot(owEchoRead(ow));
+            if ((cB == cB_inverse)) {
+                // был конфликт -- биты НЕсовпали у нескольких устройств
+                // в этм месте происходит fork
+                sB = (forkBite == b) ? 1 : 0; // мы находимся в режиме разрешения предыдущего конфликта или в новом?
+                if (sB == 0) {
+                    forkBite = b;
+                    forkROMId = devROMId;
+                }
+            } else {
+                // если прямой и инверсный биты разные, то всё ок и надо просто послать подтверждение, что мы прочитали бит
+                sB = cB;
+            }
+            // сохраняем бит
+            devROMId |= sB << b;
+            uint8_t selected = (cB == 0) ? WIRE_0 : WIRE_1;
+            owSend(ow->usart, selected);
+            b++;
+        }
     }
 }
 
-#ifdef ONEWIRE_CRC_TABLE
-const uint8_t PROGMEM onewire_crc_table[] = {
-  0x00, 0x5e, 0xbc, 0xe2, 0x61, 0x3f, 0xdd, 0x83, 0xc2, 0x9c, 0x7e, 0x20, 0xa3, 0xfd, 0x1f, 0x41,
-  0x9d, 0xc3, 0x21, 0x7f, 0xfc, 0xa2, 0x40, 0x1e, 0x5f, 0x01, 0xe3, 0xbd, 0x3e, 0x60, 0x82, 0xdc,
-  0x23, 0x7d, 0x9f, 0xc1, 0x42, 0x1c, 0xfe, 0xa0, 0xe1, 0xbf, 0x5d, 0x03, 0x80, 0xde, 0x3c, 0x62,
-  0xbe, 0xe0, 0x02, 0x5c, 0xdf, 0x81, 0x63, 0x3d, 0x7c, 0x22, 0xc0, 0x9e, 0x1d, 0x43, 0xa1, 0xff,
-  0x46, 0x18, 0xfa, 0xa4, 0x27, 0x79, 0x9b, 0xc5, 0x84, 0xda, 0x38, 0x66, 0xe5, 0xbb, 0x59, 0x07,
-  0xdb, 0x85, 0x67, 0x39, 0xba, 0xe4, 0x06, 0x58, 0x19, 0x47, 0xa5, 0xfb, 0x78, 0x26, 0xc4, 0x9a,
-  0x65, 0x3b, 0xd9, 0x87, 0x04, 0x5a, 0xb8, 0xe6, 0xa7, 0xf9, 0x1b, 0x45, 0xc6, 0x98, 0x7a, 0x24,
-  0xf8, 0xa6, 0x44, 0x1a, 0x99, 0xc7, 0x25, 0x7b, 0x3a, 0x64, 0x86, 0xd8, 0x5b, 0x05, 0xe7, 0xb9,
-  0x8c, 0xd2, 0x30, 0x6e, 0xed, 0xb3, 0x51, 0x0f, 0x4e, 0x10, 0xf2, 0xac, 0x2f, 0x71, 0x93, 0xcd,
-  0x11, 0x4f, 0xad, 0xf3, 0x70, 0x2e, 0xcc, 0x92, 0xd3, 0x8d, 0x6f, 0x31, 0xb2, 0xec, 0x0e, 0x50,
-  0xaf, 0xf1, 0x13, 0x4d, 0xce, 0x90, 0x72, 0x2c, 0x6d, 0x33, 0xd1, 0x8f, 0x0c, 0x52, 0xb0, 0xee,
-  0x32, 0x6c, 0x8e, 0xd0, 0x53, 0x0d, 0xef, 0xb1, 0xf0, 0xae, 0x4c, 0x12, 0x91, 0xcf, 0x2d, 0x73,
-  0xca, 0x94, 0x76, 0x28, 0xab, 0xf5, 0x17, 0x49, 0x08, 0x56, 0xb4, 0xea, 0x69, 0x37, 0xd5, 0x8b,
-  0x57, 0x09, 0xeb, 0xb5, 0x36, 0x68, 0x8a, 0xd4, 0x95, 0xcb, 0x29, 0x77, 0xf4, 0xaa, 0x48, 0x16,
-  0xe9, 0xb7, 0x55, 0x0b, 0x88, 0xd6, 0x34, 0x6a, 0x2b, 0x75, 0x97, 0xc9, 0x4a, 0x14, 0xf6, 0xa8,
-  0x74, 0x2a, 0xc8, 0x96, 0x15, 0x4b, 0xa9, 0xf7, 0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35
-};
-
-// Обновляет значение контольной суммы crc применением всех бит байта b.
-// Возвращает обновлённое значение контрольной суммы
-inline uint8_t onewire_crc_update(uint8_t crc, uint8_t b) {
-  return pgm_read_byte(&onewire_crc_table[crc ^ b]);
-}
-#elseif
-// Обновляет значение контольной суммы crc применением всех бит байта b.
-// Возвращает обновлённое значение контрольной суммы
-uint8_t onewire_crc_update(uint8_t crc, uint8_t b) {
-//  return pgm_read_byte(&onewire_crc_table[crc ^ b]);
-  for (uint8_t p = 8; p; p--) {
-    crc = ((crc ^ b) & 1) ? (crc >> 1) ^ 0b10001100 : (crc >> 1);
-    b >>= 1;
-  }
-  return crc;
-}
-#endif
-
-/*int _write(int file, char *ptr, int len) {
+#ifdef _STDIO_H_ //should be #include <stdio.h> & <errno.h> & #define USART_CONSOLE to use printf
+int _write(int file, char *ptr, int len) {
     int i;
 
     if (file == 1) {
@@ -204,4 +271,5 @@ uint8_t onewire_crc_update(uint8_t crc, uint8_t b) {
     }
     errno = EIO;
     return -1;
-}*/
+}
+#endif

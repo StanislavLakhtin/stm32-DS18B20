@@ -12,6 +12,7 @@
  */
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
+//#include <malloc.h>
 //#include <stdio.h>
 //#include <errno.h>
 
@@ -20,27 +21,35 @@
 
 #define ONEWIRE_SEARCH 0xf0
 
+#define MAXDEVICES_ON_THE_BUS 5
+
 #define WIRE_0	0x00
 #define WIRE_1	0xff
 #define OW_READ 0xff
 
-#define USART_CONSOLE USART2
+//#define USART_CONSOLE USART2
 
-volatile static uint16_t rc_buffer = 0x00;
-volatile static bool recvFlag = false;
+volatile bool recvFlag[5];
+volatile uint16_t rc_buffer[5];
 
-volatile static uint8_t searchBiteToRead = 0;
+typedef struct {
+    uint32_t usart;
+    uint64_t ids[MAXDEVICES_ON_THE_BUS];
+} OneWire;
 
-void usart_enable_halfduplex(uint32_t usart);
+void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity, uint32_t flowcontrol);
-uint8_t bitsToByte(uint8_t *bits);
-int OneWireReset(uint32_t usart);
-void OneWireSearchNext(uint32_t usart, uint8_t *data);
-int _write(int file, char *ptr, int len);
-void owSend(uint32_t usart, uint16_t data);
-void owSendByte(uint32_t usart, uint8_t *data);
+uint8_t getUsartIndex(uint32_t usart);
 
-uint8_t owEchoRead();
+uint8_t* byteToBits(uint8_t ow_byte, uint8_t *bits);
+
+void    owInit(OneWire* ow);
+int     owReset(OneWire* ow);
+void    owSearchCmd(OneWire* ow);
+void    owSend(OneWire* ow, uint16_t data);
+void    owSendByte(OneWire* ow, uint8_t data);
+
+uint8_t owEchoRead(OneWire *ow);
 
 
 

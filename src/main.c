@@ -2,6 +2,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include "OneWire.h"
 
+#define ONEWIRE_USART3 // Должно быть объявлено, чтобы был скомпилирован обработчик соответствующего прерывания
 
 /* Set STM32 to 72 MHz. */
 static void clock_setup(void) {
@@ -24,8 +25,6 @@ static void clock_setup(void) {
 static void gpio_setup(void) {
     gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_10_MHZ,
                   GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART2_TX | GPIO_USART2_RX);
-    //gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ,
-    //              GPIO_CNF_OUTPUT_ALTFN_OPENDRAIN,  );
 
     gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_10_MHZ,
                   GPIO_CNF_OUTPUT_ALTFN_OPENDRAIN, GPIO_USART3_TX | GPIO_USART3_RX);
@@ -40,20 +39,22 @@ static void gpio_setup(void) {
 }
 
 int main(void) {
-    uint32_t step=0;
+
+    OneWire ow;
+    ow.usart = USART3;
+    owInit(&ow);
 
     clock_setup();
     gpio_setup();
 
-    usart_setup(USART_CONSOLE, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
+    usart_setup(USART2, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE); //отладочный USART
 
-    int i;
+    uint32_t step=0, i;
     /* Blink the LEDs (PC13 and PB4) on the board. */
     while (1) {
-        uint8_t currentROM[8];
         //printf(" attempt %lu, 1wire init said: %x\n", step, );
-        OneWireReset(USART3);
-        OneWireSearchNext(USART3,currentROM);
+        owReset(&ow);
+        owSearchCmd(&ow);
         int k = 10;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */

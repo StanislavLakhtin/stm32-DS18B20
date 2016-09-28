@@ -217,9 +217,9 @@ uint8_t bitsToByte(uint8_t *bits) {
  * Если были возвращены все возможные устройства, циклически возвращается первое
  */
 void owSearchCmd(OneWire *ow) {
-    uint8_t i, devNum = 0, b = 0;
-    uint64_t devROMId = 0x00; // Здесь будет накапливаться побитно ROM ID очередного устройства
-    uint64_t forkROMId = 0x00, forkBite = 0; // Здесь будет сохранена информация, когда произойдёт fork во время поиска ID
+    uint8_t i, devNum = 0, b, forkBite = 0;
+    uint64_t devROMId; // Здесь будет накапливаться побитно ROM ID очередного устройства
+    uint64_t forkROMId = 0x00; // Здесь будет сохранена информация, когда произойдёт fork во время поиска ID
     //очищаем все ранее найденные устройства
     for (i = 0; i < MAXDEVICES_ON_THE_BUS; ++i)
         ow->ids[i] = 0x00;
@@ -246,6 +246,8 @@ void owSearchCmd(OneWire *ow) {
                 if (sB == 0) {
                     forkBite = b;
                     forkROMId = devROMId;
+                } else {
+                    forkBite = b + 1; //todo  проверить, правильное ли это поведение
                 }
             } else {
                 // если прямой и инверсный биты разные, то всё ок и надо просто послать подтверждение, что мы прочитали бит
@@ -257,6 +259,8 @@ void owSearchCmd(OneWire *ow) {
             owSend(ow, selected);
             b++;
         }
+        ow->ids[devNum] = devROMId;
+        devNum ++;
     }
 }
 

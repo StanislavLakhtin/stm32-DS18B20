@@ -93,7 +93,6 @@ void usart_enable_halfduplex(uint32_t usart) {
  * @param[in] parity Контроль чётности (USART_PARITY_NONE, etc...)
  * @param[in] flowcontrol Управление потоком (USART_FLOWCONTROL_NONE, etc...)
  */
-
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
                  uint32_t flowcontrol) {
     nvic_disable_irq(usart);
@@ -107,16 +106,16 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
     usart_set_parity(usart, parity);
     usart_set_flow_control(usart, flowcontrol);
 
-    /* Enable USART Receive interrupt. */
-    usart_enable_rx_interrupt(usart);
+    // Разрешаем NVIC обработку прерываний
     if (usart == USART3)
         nvic_enable_irq(NVIC_USART3_IRQ); //переделать на дефайны для любого USART
+    // Разрешить обработку соответствующего прерывания USART
+    usart_enable_rx_interrupt(usart);
 
     // Разрешить usart
     usart_enable_halfduplex(usart);
     usart_enable(usart);
 }
-
 
 void owInit(OneWire *ow) {
     int i = 0;
@@ -225,10 +224,12 @@ void owSearchCmd(OneWire *ow) {
     //очищаем все ранее найденные устройства
     for (i = 0; i < MAXDEVICES_ON_THE_BUS; ++i)
         ow->ids[i] = 0x00;
-    while (devNum < MAXDEVICES_ON_THE_BUS && forkBite < 64) {
+    i = 1;
+    while (devNum < MAXDEVICES_ON_THE_BUS && i == 1) {
         // посылка команды ОЧЕРЕДНОГО устройства на поиск
         owSendByte(ow, ONEWIRE_SEARCH);
         devROMId = 0x00000000;
+        i = 0;
         // будем двигаться от младшего бита к старшему до тех пор, пока не достигнем старшего или пока не достигнем
         // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
         // будут найдены столько, сколько было определено MAXDEVICES_ON_THE_BUS
@@ -242,6 +243,7 @@ void owSearchCmd(OneWire *ow) {
             owSend(ow, OW_READ); // чтение инверсного бита
             cB_inverse = owReadSlot(owEchoRead(ow));
             if ((cB == cB_inverse)) {
+                i = 1;
                 // был конфликт -- биты НЕсовпали у нескольких устройств
                 // в этм месте УЖЕ произошёл fork
                 sB = (forkBite == b) ? 1 : 0; // мы находимся в режиме разрешения предыдущего конфликта или в новом?

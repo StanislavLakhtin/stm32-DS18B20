@@ -38,13 +38,13 @@ void usart4_isr(void) {
     }
 }
 #endif
-#ifdef ONEWIRE_USART3
+#if defined(ONEWIRE_USART3)
 void usart3_isr(void) {
-    /* Check if we were called because of RXNE. */
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
     if ((recvFlag[2]) && ((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
         ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
 
-        /* Retrieve the data from the peripheral. */
+        /* Получаем данные из периферии и сбрасываем флаг*/
         rc_buffer[2] = usart_recv_blocking(USART3);
         recvFlag[2] = false;
     }
@@ -96,7 +96,9 @@ void usart_enable_halfduplex(uint32_t usart) {
 
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
                  uint32_t flowcontrol) {
+    nvic_disable_irq(usart);
     usart_disable(usart);
+
     // Настраиваем
     usart_set_baudrate(usart, baud);
     usart_set_databits(usart, bits);
@@ -105,9 +107,10 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
     usart_set_parity(usart, parity);
     usart_set_flow_control(usart, flowcontrol);
 
-    /* Enable USART1 Receive interrupt. */
+    /* Enable USART Receive interrupt. */
     usart_enable_rx_interrupt(usart);
-    nvic_enable_irq(NVIC_USART3_IRQ); //переделать на дефайны для любого USART
+    if (usart == USART3)
+        nvic_enable_irq(NVIC_USART3_IRQ); //переделать на дефайны для любого USART
 
     // Разрешить usart
     usart_enable_halfduplex(usart);
@@ -128,7 +131,7 @@ void owInit(OneWire *ow) {
  */
 
 int owReset(OneWire *ow) {
-    int oneWireDevices = 0;
+    int oneWireDevices = 0x00;
     usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
     owSend(ow, 0xF0); // Send RESET

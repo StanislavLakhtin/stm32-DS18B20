@@ -4,7 +4,7 @@
 
 #define ONEWIRE_USART3 // Должно быть объявлено, чтобы был скомпилирован обработчик соответствующего прерывания
 
-/* Set STM32 to 72 MHz. */
+/* STM32 в 72 MHz. */
 static void clock_setup(void) {
     rcc_clock_setup_in_hse_8mhz_out_72mhz();
 
@@ -36,7 +36,7 @@ static void gpio_setup(void) {
     AFIO_MAPR |= AFIO_MAPR_SWJ_CFG_FULL_SWJ_NO_JNTRST;
 
     /* Преконфигурация LED. */
-    gpio_clear(GPIOC, GPIO13);    /* Switch on LED. */
+    gpio_clear(GPIOC, GPIO13);
 }
 
 int main(void) {

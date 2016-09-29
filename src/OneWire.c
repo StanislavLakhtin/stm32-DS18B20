@@ -120,7 +120,7 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
 void owInit(OneWire *ow) {
     int i = 0;
     for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++)
-        ow->ids[i] = 0x00;
+        ow->ids[i] = 0x00000000;
 }
 
 /** Реализация RESET на шине 1wire
@@ -130,14 +130,14 @@ void owInit(OneWire *ow) {
  */
 
 int owReset(OneWire *ow) {
-    int oneWireDevices = 0x00;
+    int oneWireDevices;
     usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
     owSend(ow, 0xF0); // Send RESET
     oneWireDevices = owEchoRead(ow); //Wait PRESENCE on the bus
 
     usart_setup(ow->usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
-    return oneWireDevices;//(oneWireDevices > 0x10 && oneWireDevices < 0x90) ? 1 : 0;
+    return oneWireDevices;
 }
 
 void owSend(OneWire *ow, uint16_t data) {
@@ -153,7 +153,7 @@ uint8_t owReadSlot(uint16_t data) {
 uint8_t owEchoRead(OneWire *ow) {
     uint8_t i = getUsartIndex(ow->usart);
     while (recvFlag[i]);
-    return rc_buffer[i];
+    return (uint8_t)rc_buffer[i];
 }
 
 uint8_t getUsartIndex(uint32_t usart) {

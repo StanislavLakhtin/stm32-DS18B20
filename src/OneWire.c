@@ -134,7 +134,7 @@ int owReset(OneWire *ow) {
     usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
     owSend(ow, 0xF0); // Send RESET
-    oneWireDevices = owEchoRead(ow); //Wait PRESENCE on the bus
+    oneWireDevices = owEchoRead(ow); // Ждём PRESENCE на шине
 
     usart_setup(ow->usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
     return oneWireDevices;

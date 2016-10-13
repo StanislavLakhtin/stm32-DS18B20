@@ -12,16 +12,15 @@
  */
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
-//#include <malloc.h>
-//#include <stdio.h>
-//#include <errno.h>
 
 #ifndef STM32_DS18X20_ONEWIRE_H
 #define STM32_DS18X20_ONEWIRE_H
 
 #define ONEWIRE_SEARCH 0xf0
 
+#ifndef MAXDEVICES_ON_THE_BUS
 #define MAXDEVICES_ON_THE_BUS 5
+#endif
 
 #define WIRE_0	0x00
 #define WIRE_1	0xff
@@ -44,7 +43,7 @@ uint8_t getUsartIndex(uint32_t usart);
 uint8_t* byteToBits(uint8_t ow_byte, uint8_t *bits);
 
 void    owInit(OneWire* ow);
-int     owReset(OneWire* ow);
+uint16_t     owReset(OneWire* ow);
 void    owSearchCmd(OneWire* ow);
 void    owSend(OneWire* ow, uint16_t data);
 void    owSendByte(OneWire* ow, uint8_t data);

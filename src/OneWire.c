@@ -95,7 +95,15 @@ void usart_enable_halfduplex(uint32_t usart) {
  */
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
                  uint32_t flowcontrol) {
-    nvic_disable_irq(usart);
+    uint8_t irqNumber;
+    switch (usart) {
+        case (USART1): irqNumber = NVIC_USART1_IRQ; break;
+        case (USART2): irqNumber = NVIC_USART2_IRQ; break;
+        case (USART3): irqNumber = NVIC_USART3_IRQ; break;
+        case (UART4): irqNumber = NVIC_UART4_IRQ; break;
+        case (UART5): irqNumber = NVIC_UART5_IRQ; break;
+    }
+    nvic_disable_irq(irqNumber);
     usart_disable(usart);
 
     // Настраиваем
@@ -106,9 +114,7 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
     usart_set_parity(usart, parity);
     usart_set_flow_control(usart, flowcontrol);
 
-    // Разрешаем NVIC обработку прерываний
-    if (usart == USART3)
-        nvic_enable_irq(NVIC_USART3_IRQ); //переделать на дефайны для любого USART
+    nvic_enable_irq(irqNumber); //переделать на дефайны для любого USART
     // Разрешить обработку соответствующего прерывания USART
     usart_enable_rx_interrupt(usart);
 
@@ -129,12 +135,11 @@ void owInit(OneWire *ow) {
  * @return Возвращает 1 если на шине кто-то есть и 0 в противном случае
  */
 
-int owReset(OneWire *ow) {
-    int oneWireDevices;
+uint16_t owReset(OneWire *ow) {
     usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
     owSend(ow, 0xF0); // Send RESET
-    oneWireDevices = owEchoRead(ow); // Ждём PRESENCE на шине
+    uint16_t oneWireDevices = owEchoRead(ow); // Ждём PRESENCE на шине
 
     usart_setup(ow->usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
     return oneWireDevices;
@@ -158,16 +163,11 @@ uint8_t owEchoRead(OneWire *ow) {
 
 uint8_t getUsartIndex(uint32_t usart) {
     switch (usart) {
-        case (USART1):
-            return 0;
-        case (USART2):
-            return 1;
-        case (USART3):
-            return 2;
-        case (UART4):
-            return 3;
-        case (UART5):
-            return 4;
+        case (USART1): return 0;
+        case (USART2): return 1;
+        case (USART3): return 2;
+        case (UART4): return 3;
+        case (UART5): return 4;
     }
     return -1;
 }

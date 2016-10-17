@@ -10,11 +10,11 @@
             Реализация библиотеки осуществляет замыкание RX на TX внутри uK, оставляя ножку RX доступной для использования в других задачах.
 
  */
-#include <libopencm3/stm32/usart.h>
-#include <libopencm3/cm3/nvic.h>
-
 #ifndef STM32_DS18X20_ONEWIRE_H
 #define STM32_DS18X20_ONEWIRE_H
+
+#include <libopencm3/stm32/usart.h>
+#include <libopencm3/cm3/nvic.h>
 
 #define ONEWIRE_SEARCH 0xf0
 
@@ -28,7 +28,7 @@
 
 //#define USART_CONSOLE USART2
 
-volatile bool recvFlag[5];
+volatile uint8_t recvFlag;
 volatile uint16_t rc_buffer[5];
 
 typedef struct {
@@ -48,8 +48,19 @@ void    owSearchCmd(OneWire* ow);
 void    owSend(OneWire* ow, uint16_t data);
 void    owSendByte(OneWire* ow, uint8_t data);
 
-uint8_t owEchoRead(OneWire *ow);
+uint16_t owEchoRead(OneWire *ow);
 
 
+#ifdef ONEWIRE_USART3
+void usart3_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
 
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[2] = usart_recv_blocking(USART3);
+        recvFlag &= ~(1 << 2);
+    }
+}
+#endif
 #endif //STM32_DS18X20_ONEWIRE_H

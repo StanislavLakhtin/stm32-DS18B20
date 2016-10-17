@@ -1,8 +1,11 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#define ONEWIRE_USART3 // Должно быть объявлено, чтобы был скомпилирован обработчик соответствующего прерывания
+
 #include "OneWire.h"
 
-#define ONEWIRE_USART3 // Должно быть объявлено, чтобы был скомпилирован обработчик соответствующего прерывания
+
+
 
 /* STM32 в 72 MHz. */
 static void clock_setup(void) {
@@ -15,7 +18,7 @@ static void clock_setup(void) {
 
     rcc_periph_clock_enable(RCC_AFIO);
 
-    /* Enable clocks for USART2. */
+    /* Enable clocks for USARTs. */
     //rcc_periph_clock_enable(RCC_USART2); //включить, если используется отладка
 #ifdef ONEWIRE_USART3
     rcc_periph_clock_enable(RCC_USART3);
@@ -41,12 +44,12 @@ static void gpio_setup(void) {
 
 int main(void) {
 
+    clock_setup();
+    gpio_setup();
+
     OneWire ow;
     ow.usart = USART3;
     owInit(&ow);
-
-    clock_setup();
-    gpio_setup();
 
     //usart_setup(USART2, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE); //отладочный USART
 
@@ -55,7 +58,7 @@ int main(void) {
     while (1) {
         //printf(" attempt %lu, 1wire init said: %x\n", step, );
         owReset(&ow);
-        //owSearchCmd(&ow);
+        owSearchCmd(&ow);
         int k = 10;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */

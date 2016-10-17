@@ -14,66 +14,6 @@
  */
 
 
-#ifdef ONEWIRE_USART5
-void usart5_isr(void) {
-    /* Check if we were called because of RXNE. */
-    if ((recvFlag[4]) && ((USART_CR1(USART5) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART5) & USART_SR_RXNE) != 0)) {
-
-        /* Retrieve the data from the peripheral. */
-        rc_buffer[4] = usart_recv_blocking(USART5);
-        recvFlag[4] = false;
-    }
-}
-#endif
-#ifdef ONEWIRE_USART4
-void usart4_isr(void) {
-    /* Check if we were called because of RXNE. */
-    if ((recvFlag[3]) && ((USART_CR1(USART4) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART4) & USART_SR_RXNE) != 0)) {
-
-        /* Retrieve the data from the peripheral. */
-        rc_buffer[3] = usart_recv_blocking(USART4);
-        recvFlag[3] = false;
-    }
-}
-#endif
-#if defined(ONEWIRE_USART3)
-void usart3_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if ((recvFlag[2]) && ((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
-
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[2] = usart_recv_blocking(USART3);
-        recvFlag[2] = false;
-    }
-}
-#endif
-#ifdef ONEWIRE_USART2
-void usart2_isr(void) {
-    /* Check if we were called because of RXNE. */
-    if ((recvFlag[1]) && ((USART_CR1(USART2) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART2) & USART_SR_RXNE) != 0)) {
-
-        /* Retrieve the data from the peripheral. */
-        rc_buffer[1] = usart_recv_blocking(USART2);
-        recvFlag[1] = false;
-    }
-}
-#endif
-#ifdef ONEWIRE_USART1
-void usart1_isr(void) {
-    /* Check if we were called because of RXNE. */
-    if ((recvFlag[0]) && ((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
-
-        /* Retrieve the data from the peripheral. */
-        rc_buffer[0] = usart_recv_blocking(USART1);
-        recvFlag[0] = false;
-    }
-}
-#endif
 
 /// Метод реализует переключение работы USART в half-duplex режим. Метод не работает для 1wire реализации
 void usart_enable_halfduplex(uint32_t usart) {
@@ -95,9 +35,8 @@ void usart_enable_halfduplex(uint32_t usart) {
  */
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
                  uint32_t flowcontrol) {
-    uint8_t irqNumber;
+    uint8_t irqNumber = NVIC_USART1_IRQ;
     switch (usart) {
-        case (USART1): irqNumber = NVIC_USART1_IRQ; break;
         case (USART2): irqNumber = NVIC_USART2_IRQ; break;
         case (USART3): irqNumber = NVIC_USART3_IRQ; break;
         case (UART4): irqNumber = NVIC_UART4_IRQ; break;
@@ -114,13 +53,11 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
     usart_set_parity(usart, parity);
     usart_set_flow_control(usart, flowcontrol);
 
-    nvic_enable_irq(irqNumber); //переделать на дефайны для любого USART
-    // Разрешить обработку соответствующего прерывания USART
     usart_enable_rx_interrupt(usart);
 
-    // Разрешить usart
     usart_enable_halfduplex(usart);
     usart_enable(usart);
+    nvic_enable_irq(irqNumber);
 }
 
 void owInit(OneWire *ow) {
@@ -146,7 +83,7 @@ uint16_t owReset(OneWire *ow) {
 }
 
 void owSend(OneWire *ow, uint16_t data) {
-    recvFlag[getUsartIndex(ow->usart)] = true;
+    recvFlag |=  (1 << getUsartIndex(ow->usart));
     usart_send(ow->usart, data);
     while (!usart_get_flag(ow->usart, USART_SR_TC));
 }
@@ -155,10 +92,10 @@ uint8_t owReadSlot(uint16_t data) {
     return (data == OW_READ) ? 1 : 0;
 }
 
-uint8_t owEchoRead(OneWire *ow) {
+uint16_t owEchoRead(OneWire *ow) {
     uint8_t i = getUsartIndex(ow->usart);
-    while (recvFlag[i]);
-    return (uint8_t)rc_buffer[i];
+    while (recvFlag & (1 << i));
+    return rc_buffer[i];
 }
 
 uint8_t getUsartIndex(uint32_t usart) {

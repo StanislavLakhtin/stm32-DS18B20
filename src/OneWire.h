@@ -63,4 +63,28 @@ void usart3_isr(void) {
     }
 }
 #endif
+#ifdef ONEWIRE_USART2
+void usart2_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(USART2) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART2) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[1] = usart_recv_blocking(USART3);
+        recvFlag &= ~(1 << 1);
+    }
+}
+#endif
+#ifdef ONEWIRE_USART1
+void usart1_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[0] = usart_recv_blocking(USART3);
+        recvFlag &= ~1;
+    }
+}
+#endif
 #endif //STM32_DS18X20_ONEWIRE_H

@@ -174,50 +174,52 @@ uint8_t bitsToByte(uint8_t *bits) {
  * Если были возвращены все возможные устройства, циклически возвращается первое
  */
 void owSearchCmd(OneWire *ow) {
-    uint8_t devNum = 0, b, forkBite = -1;
+    uint8_t devNum = 0;
+    int8_t forkBite = -1;
     bool oneMoreDevice = true;
-    uint8_t readBuffer; // Здесь будет накапливаться побитно ROM ID очередного устройства
+    uint8_t *readBuffer; // Здесь будет накапливаться побитно ROM ID очередного устройства
     //очищаем все ранее найденные устройства
     owInit(ow);
     while (devNum < MAXDEVICES_ON_THE_BUS && oneMoreDevice) {
+        owReset(ow);
         // посылка команды ОЧЕРЕДНОГО устройства на поиск
         owSendByte(ow, ONEWIRE_SEARCH);
-        oneMoreDevice = false; // до тех пор, пока не получили подтверждения об обратном, считаем, что устройство только одно
-        // будем двигаться от младшего бита к старшему до тех пор, пока не достигнем старшего или пока не достигнем
+        // будем двигаться от МЛАДШЕГО БИТА К СТАРШЕМУ до тех пор, пока не достигнем старшего или пока не достигнем
         // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
         // будут найдены столько, сколько было определено MAXDEVICES_ON_THE_BUS
-        // стараемся загрузить 64?/128 бит [FAMILY CODE(1B)][ROM CODE(6B)][CRC(1B)]
+        // стараемся загрузить 64 бит [FAMILY CODE(1B)][ROM CODE(6B)][CRC(1B)] (ОБРАТНЫЙ ПОРЯОК БИТ)
         uint8_t bC = 0;
-        while (bC < 8) {
-            readBuffer = 0x00;
-            b = 0;  // начинаем мы поиск всегда с нулевого бита
-            while (b < 8) {
-                // в соответствии с логикой читаем бит посылая два цикла чтения
-                // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
-                uint8_t cB, cB_inverse, sB;
-                owSend(ow, OW_READ); // чтение прямого бита
-                cB = owReadSlot(owEchoRead(ow));
-                owSend(ow, OW_READ); // чтение инверсного бита
-                cB_inverse = owReadSlot(owEchoRead(ow));
-                if ((cB == cB_inverse)) {
+        while (bC < 64) {
+            readBuffer = ((uint8_t *) (&ow->ids[devNum]) + 7 - bC / 8);
+            // в соответствии с логикой читаем бит посылая два цикла чтения
+            // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
+            uint8_t cB, cB_inverse, sB;
+            owSend(ow, OW_READ); // чтение прямого бита
+            cB = owReadSlot(owEchoRead(ow));
+            owSend(ow, OW_READ); // чтение инверсного бита
+            cB_inverse = owReadSlot(owEchoRead(ow));
+            if ((cB == cB_inverse)) {
+                // был конфликт -- биты НЕ совпали у нескольких устройств
+                // в этм месте УЖЕ произошёл fork
+                sB = (forkBite == bC) ? 1 : 0; // мы находимся в режиме разрешения предыдущего конфликта или в новом?
+                if (sB == 0) {
+                    forkBite = bC;
                     oneMoreDevice = true;
-                    // был конфликт -- биты НЕсовпали у нескольких устройств
-                    // в этм месте УЖЕ произошёл fork
-                    sB = (forkBite == b) ? 1 : 0; // мы находимся в режиме разрешения предыдущего конфликта или в новом?
-                    if (sB == 0) {
-                        forkBite = b;
-                    }
                 } else {
-                    // если прямой и инверсный биты разные, то всё ок и надо просто послать подтверждение, что мы прочитали бит
-                    sB = cB;
+                    oneMoreDevice = false;
                 }
-                // сохраняем бит
-                readBuffer |= sB << b;
-                uint8_t selected = (cB == 0) ? WIRE_0 : WIRE_1;
-                owSend(ow, selected);
-                b++;
+            } else {
+                // если прямой и инверсный биты разные, то всё ок. Просто запоминаем, что пришло
+                sB = cB;
             }
-            *(((uint8_t *) &ow->ids[devNum]) + 7 - bC) = readBuffer;
+            // сохраняем бит
+            if (sB == 1)
+                *(readBuffer) |= 1 << bC % 8;
+            else
+                *(readBuffer) &= ~(1 << bC % 8);
+            uint8_t answerBit = (sB == 0) ? WIRE_0 : WIRE_1;
+            owSend(ow, answerBit);
+            //*(((uint8_t *) &ow->ids[devNum]) + 7 - bC) = readBuffer;
             bC++;
         }
         devNum++;

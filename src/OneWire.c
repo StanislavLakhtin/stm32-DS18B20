@@ -37,10 +37,18 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
                  uint32_t flowcontrol) {
     uint8_t irqNumber = NVIC_USART1_IRQ;
     switch (usart) {
-        case (USART2): irqNumber = NVIC_USART2_IRQ; break;
-        case (USART3): irqNumber = NVIC_USART3_IRQ; break;
-        case (UART4): irqNumber = NVIC_UART4_IRQ; break;
-        case (UART5): irqNumber = NVIC_UART5_IRQ; break;
+        case (USART2):
+            irqNumber = NVIC_USART2_IRQ;
+            break;
+        case (USART3):
+            irqNumber = NVIC_USART3_IRQ;
+            break;
+        case (UART4):
+            irqNumber = NVIC_UART4_IRQ;
+            break;
+        case (UART5):
+            irqNumber = NVIC_UART5_IRQ;
+            break;
     }
     nvic_disable_irq(irqNumber);
     usart_disable(usart);
@@ -61,9 +69,14 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
 }
 
 void owInit(OneWire *ow) {
-    int i = 0;
-    for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++)
-        ow->ids[i] = 0x00000000;
+    int i, k = 0;
+    for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
+        ow->ids[i].crc = 0x00;
+        ow->ids[i].family = 0x00;
+        for (k = 0; k < 6; k++)
+            ow->ids[k].code[k] = 0x00;
+    }
+
 }
 
 /** Реализация RESET на шине 1wire
@@ -83,7 +96,7 @@ uint16_t owReset(OneWire *ow) {
 }
 
 void owSend(OneWire *ow, uint16_t data) {
-    recvFlag |=  (1 << getUsartIndex(ow->usart));
+    recvFlag |= (1 << getUsartIndex(ow->usart));
     usart_send(ow->usart, data);
     while (!usart_get_flag(ow->usart, USART_SR_TC));
 }
@@ -100,11 +113,16 @@ uint16_t owEchoRead(OneWire *ow) {
 
 uint8_t getUsartIndex(uint32_t usart) {
     switch (usart) {
-        case (USART1): return 0;
-        case (USART2): return 1;
-        case (USART3): return 2;
-        case (UART4): return 3;
-        case (UART5): return 4;
+        case (USART1):
+            return 0;
+        case (USART2):
+            return 1;
+        case (USART3):
+            return 2;
+        case (UART4):
+            return 3;
+        case (UART5):
+            return 4;
     }
     return -1;
 }
@@ -156,48 +174,52 @@ uint8_t bitsToByte(uint8_t *bits) {
  * Если были возвращены все возможные устройства, циклически возвращается первое
  */
 void owSearchCmd(OneWire *ow) {
-    uint8_t i, devNum = 0, b, forkBite = -1;
-    uint64_t devROMId; // Здесь будет накапливаться побитно ROM ID очередного устройства
+    uint8_t devNum = 0, b, forkBite = -1;
+    bool oneMoreDevice = true;
+    uint8_t readBuffer; // Здесь будет накапливаться побитно ROM ID очередного устройства
     //очищаем все ранее найденные устройства
-    for (i = 0; i < MAXDEVICES_ON_THE_BUS; ++i)
-        ow->ids[i] = 0x00;
-    i = 1;
-    while (devNum < MAXDEVICES_ON_THE_BUS && i == 1) {
+    owInit(ow);
+    while (devNum < MAXDEVICES_ON_THE_BUS && oneMoreDevice) {
         // посылка команды ОЧЕРЕДНОГО устройства на поиск
         owSendByte(ow, ONEWIRE_SEARCH);
-        devROMId = 0x00000000;
-        i = 0;
+        oneMoreDevice = false; // до тех пор, пока не получили подтверждения об обратном, считаем, что устройство только одно
         // будем двигаться от младшего бита к старшему до тех пор, пока не достигнем старшего или пока не достигнем
         // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
         // будут найдены столько, сколько было определено MAXDEVICES_ON_THE_BUS
-        b = 0; // начинаем мы поиск всегда с нулевого бита
-        while (b < 64) {
-            // в соответствии с логикой читаем бит посылая два цикла чтения
-            // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
-            uint8_t cB, cB_inverse, sB;
-            owSend(ow, OW_READ); // чтение прямого бита
-            cB = owReadSlot(owEchoRead(ow));
-            owSend(ow, OW_READ); // чтение инверсного бита
-            cB_inverse = owReadSlot(owEchoRead(ow));
-            if ((cB == cB_inverse)) {
-                i = 1;
-                // был конфликт -- биты НЕсовпали у нескольких устройств
-                // в этм месте УЖЕ произошёл fork
-                sB = (forkBite == b) ? 1 : 0; // мы находимся в режиме разрешения предыдущего конфликта или в новом?
-                if (sB == 0) {
-                    forkBite = b;
+        // стараемся загрузить 64?/128 бит [FAMILY CODE(1B)][ROM CODE(6B)][CRC(1B)]
+        uint8_t bC = 0;
+        while (bC < 8) {
+            readBuffer = 0x00;
+            b = 0;  // начинаем мы поиск всегда с нулевого бита
+            while (b < 8) {
+                // в соответствии с логикой читаем бит посылая два цикла чтения
+                // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
+                uint8_t cB, cB_inverse, sB;
+                owSend(ow, OW_READ); // чтение прямого бита
+                cB = owReadSlot(owEchoRead(ow));
+                owSend(ow, OW_READ); // чтение инверсного бита
+                cB_inverse = owReadSlot(owEchoRead(ow));
+                if ((cB == cB_inverse)) {
+                    oneMoreDevice = true;
+                    // был конфликт -- биты НЕсовпали у нескольких устройств
+                    // в этм месте УЖЕ произошёл fork
+                    sB = (forkBite == b) ? 1 : 0; // мы находимся в режиме разрешения предыдущего конфликта или в новом?
+                    if (sB == 0) {
+                        forkBite = b;
+                    }
+                } else {
+                    // если прямой и инверсный биты разные, то всё ок и надо просто послать подтверждение, что мы прочитали бит
+                    sB = cB;
                 }
-            } else {
-                // если прямой и инверсный биты разные, то всё ок и надо просто послать подтверждение, что мы прочитали бит
-                sB = cB;
+                // сохраняем бит
+                readBuffer |= sB << b;
+                uint8_t selected = (cB == 0) ? WIRE_0 : WIRE_1;
+                owSend(ow, selected);
+                b++;
             }
-            // сохраняем бит
-            devROMId |= sB << b;
-            uint8_t selected = (cB == 0) ? WIRE_0 : WIRE_1;
-            owSend(ow, selected);
-            b++;
+            *(((uint8_t *) &ow->ids[devNum]) + 7 - bC) = readBuffer;
+            bC++;
         }
-        ow->ids[devNum] = devROMId;
         devNum++;
     }
 }

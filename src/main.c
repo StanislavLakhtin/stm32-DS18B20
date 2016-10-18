@@ -1,11 +1,8 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-#define ONEWIRE_USART3 // Должно быть объявлено, чтобы был скомпилирован обработчик соответствующего прерывания
 
+#define ONEWIRE_USART3 // Должно быть объявлено ДО include "OneWire.h", чтобы был добавлен обработчик соответствующего прерывания
 #include "OneWire.h"
-
-
-
 
 /* STM32 в 72 MHz. */
 static void clock_setup(void) {
@@ -42,12 +39,13 @@ static void gpio_setup(void) {
     gpio_clear(GPIOC, GPIO13);
 }
 
+OneWire ow;
+
 int main(void) {
 
     clock_setup();
     gpio_setup();
 
-    OneWire ow;
     ow.usart = USART3;
     owInit(&ow);
 

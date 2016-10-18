@@ -32,8 +32,14 @@ volatile uint8_t recvFlag;
 volatile uint16_t rc_buffer[5];
 
 typedef struct {
+    uint8_t crc;
+    uint8_t code[6];
+    uint8_t family;
+} RomCode;
+
+typedef struct {
     uint32_t usart;
-    uint64_t ids[MAXDEVICES_ON_THE_BUS];
+    RomCode ids[MAXDEVICES_ON_THE_BUS];
 } OneWire;
 
 void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART
@@ -50,7 +56,30 @@ void    owSendByte(OneWire* ow, uint8_t data);
 
 uint16_t owEchoRead(OneWire *ow);
 
+#ifdef ONEWIRE_UART5
+void usart3_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(UART5) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(UART5) & USART_SR_RXNE) != 0)) {
 
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[4] = usart_recv_blocking(UART5);
+        recvFlag &= ~(1 << 4);
+    }
+}
+#endif
+#ifdef ONEWIRE_UART4
+void uart4_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(UART4) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(UART4) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[3] = usart_recv_blocking(UART4);
+        recvFlag &= ~(1 << 3);
+    }
+}
+#endif
 #ifdef ONEWIRE_USART3
 void usart3_isr(void) {
     /* Проверяем, что мы вызвали прерывание из-за RXNE. */

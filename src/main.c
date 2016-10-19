@@ -59,6 +59,7 @@ int main(void) {
             owConvertTemperatureCmd(&ow, &ow.ids[0]);
         else
             owReadScratchpadCmd(&ow, &ow.ids[0], data);
+        //do something while sensor work
         int k = 10;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */

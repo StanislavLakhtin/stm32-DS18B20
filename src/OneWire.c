@@ -253,17 +253,13 @@ void owConvertTemperatureCmd(OneWire *ow, RomCode *rom) {
     owSendByte(ow, ONEWIRE_CONVERT_TEMPERATURE);
 }
 
-uint8_t* owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data){
+uint8_t *owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data) {
     owMatchRomCmd(ow, rom);
-    uint16_t b=0;
+    uint16_t b = 0;
     owSendByte(ow, ONEWIRE_READ_SCRATCHPAD);
-    while (b<64) {
+    while (b < 72) {
         owSend(ow, OW_READ); // чтение прямого бита
-        uint8_t cB = owReadSlot(owEchoRead(ow));
-        owSend(ow, OW_READ);
-        uint8_t cB_inverse = owReadSlot(owEchoRead(ow));
-        uint8_t answerBit = (cB == 0) ? WIRE_0 : WIRE_1;
-        owSend(ow, answerBit);
+        data[8 - b / 8] |= owReadSlot(owEchoRead(ow)) << b % 8;
         b++;
     }
     return data;

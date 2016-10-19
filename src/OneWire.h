@@ -75,6 +75,7 @@ void owSendByte(OneWire *ow, uint8_t data);
 
 uint16_t owEchoRead(OneWire *ow);
 
+
 #ifdef ONEWIRE_UART5
 void usart3_isr(void) {
     /* Проверяем, что мы вызвали прерывание из-за RXNE. */

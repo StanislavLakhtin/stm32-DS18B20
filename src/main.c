@@ -50,7 +50,7 @@ int main(void) {
     ow.usart = USART3;
     owSearchCmd(&ow);
 
-    uint8_t data[8];
+    uint8_t data[9];
     bool readWrite = true;
 
     uint32_t step = 0, i;

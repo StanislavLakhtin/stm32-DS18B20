@@ -89,26 +89,10 @@ uint16_t owResetCmd(OneWire *ow) {
     usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
     owSend(ow, 0xF0); // Send RESET
-    uint16_t oneWireDevices = owEchoRead(ow); // Ждём PRESENCE на шине
+    uint16_t owPresence = owEchoRead(ow); // Ждём PRESENCE на шине и вовзращаем, что есть
 
     usart_setup(ow->usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
-    return oneWireDevices;
-}
-
-void owSend(OneWire *ow, uint16_t data) {
-    recvFlag |= (1 << getUsartIndex(ow->usart));
-    usart_send(ow->usart, data);
-    while (!usart_get_flag(ow->usart, USART_SR_TC));
-}
-
-uint8_t owReadSlot(uint16_t data) {
-    return (data == OW_READ) ? 1 : 0;
-}
-
-uint16_t owEchoRead(OneWire *ow) {
-    uint8_t i = getUsartIndex(ow->usart);
-    while (recvFlag & (1 << i));
-    return rc_buffer[i];
+    return owPresence;
 }
 
 uint8_t getUsartIndex(uint32_t usart) {
@@ -127,18 +111,20 @@ uint8_t getUsartIndex(uint32_t usart) {
     return -1;
 }
 
-/**
- * Метод пересылает последовательно 8 байт по одному на каждый бит в data
- * @param usart -- выбранный для эмуляции 1wire USART
- * @param d -- данные
- */
-void owSendByte(OneWire *ow, uint8_t d) {
-    uint8_t data[8];
-    byteToBits(d, data);
-    int i;
-    for (i = 0; i < 8; ++i) {
-        owSend(ow, data[i]);
-    }
+void owSend(OneWire *ow, uint16_t data) {
+    recvFlag |= (1 << getUsartIndex(ow->usart));
+    usart_send(ow->usart, data);
+    while (!usart_get_flag(ow->usart, USART_SR_TC));
+}
+
+uint8_t owReadSlot(uint16_t data) {
+    return (data == OW_READ) ? 1 : 0;
+}
+
+uint16_t owEchoRead(OneWire *ow) {
+    uint8_t i = getUsartIndex(ow->usart);
+    while (recvFlag & (1 << i));
+    return rc_buffer[i];
 }
 
 uint8_t *byteToBits(uint8_t ow_byte, uint8_t *bits) {
@@ -154,6 +140,21 @@ uint8_t *byteToBits(uint8_t ow_byte, uint8_t *bits) {
     }
     return bits;
 }
+
+/**
+ * Метод пересылает последовательно 8 байт по одному на каждый бит в data
+ * @param usart -- выбранный для эмуляции 1wire USART
+ * @param d -- данные
+ */
+void owSendByte(OneWire *ow, uint8_t d) {
+    uint8_t data[8];
+    byteToBits(d, data);
+    int i;
+    for (i = 0; i < 8; ++i) {
+        owSend(ow, data[i]);
+    }
+}
+
 
 uint8_t bitsToByte(uint8_t *bits) {
     uint8_t target_byte, i;
@@ -263,6 +264,24 @@ uint8_t *owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data) {
         b++;
     }
     return data;
+}
+
+void owWriteDS18B20Scratchpad(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl, uint8_t conf) {
+    owMatchRomCmd(ow, rom);
+    owSendByte(ow, ONEWIRE_WRITE_SCRATCHPAD);
+    owSendByte(ow, th);
+    owSendByte(ow, tl);
+    owSendByte(ow,conf);
+}
+
+void owCopyScratchpadCmd(OneWire *ow, RomCode *rom) {
+    owMatchRomCmd(ow, rom);
+    owSendByte(ow, ONEWIRE_COPY_SCRATCHPAD);
+}
+
+void owRecallE2Cmd(OneWire *ow, RomCode *rom) {
+    owMatchRomCmd(ow, rom);
+    owSendByte(ow, ONEWIRE_RECALL_E2);
 }
 
 #ifdef _STDIO_H_ //should be #include <stdio.h> & <errno.h> & #define USART_CONSOLE to use printf

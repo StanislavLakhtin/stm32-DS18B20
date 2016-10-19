@@ -22,6 +22,9 @@
 #define ONEWIRE_MATCH_ROM 0x55
 #define ONEWIRE_CONVERT_TEMPERATURE 0x44
 #define ONEWIRE_READ_SCRATCHPAD 0xBE
+#define ONEWIRE_WRITE_SCRATCHPAD 0x4E
+#define ONEWIRE_COPY_SCRATCHPAD 0x48
+#define ONEWIRE_RECALL_E2 0xB8
 
 #ifndef MAXDEVICES_ON_THE_BUS
 #define MAXDEVICES_ON_THE_BUS 5
@@ -43,6 +46,16 @@ typedef struct {
 } RomCode;
 
 typedef struct {
+    uint8_t crc;
+    uint8_t reserved[3];
+    uint8_t configuration;
+    uint8_t tl;
+    uint8_t th;
+    uint8_t temp_msb;
+    uint8_t temp_lsb;
+} DS18B20_Scratchpad;
+
+typedef struct {
     uint32_t usart;
     RomCode ids[MAXDEVICES_ON_THE_BUS];
 } OneWire;
@@ -50,12 +63,6 @@ typedef struct {
 void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
                  uint32_t flowcontrol);
-
-uint8_t getUsartIndex(uint32_t usart);
-
-uint8_t *byteToBits(uint8_t ow_byte, uint8_t *bits);
-
-void owInit(OneWire *ow);
 
 uint16_t owResetCmd(OneWire *ow);
 
@@ -68,6 +75,12 @@ void owMatchRomCmd(OneWire *ow, RomCode *rom);
 void owConvertTemperatureCmd(OneWire *ow, RomCode *rom);
 
 uint8_t* owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data);
+
+void owCopyScratchpadCmd(OneWire *ow, RomCode *rom);
+
+void owRecallE2Cmd(OneWire *ow, RomCode *rom);
+
+void owWriteDS18B20ScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl, uint8_t conf);
 
 void owSend(OneWire *ow, uint16_t data);
 

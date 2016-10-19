@@ -50,15 +50,18 @@ int main(void) {
     ow.usart = USART3;
     owSearchCmd(&ow);
 
-    uint8_t data[9];
+    DS18B20_Scratchpad data;
     bool readWrite = true;
 
     uint32_t step = 0, i;
     while (1) {
-        if (readWrite)
-            owConvertTemperatureCmd(&ow, &ow.ids[0]);
-        else
-            owReadScratchpadCmd(&ow, &ow.ids[0], data);
+        if (ow.ids[0].family == 0x28) {
+            if (readWrite) {
+                //owWriteDS18B20ScratchpadCmd(&ow, &ow.ids[0], 0xff, 0xff, 0x7f); //TH = 0x20 TL=0x40 CONF (R1R2=00) 9bit precise
+                owConvertTemperatureCmd(&ow, &ow.ids[0]);
+            } else
+                owReadScratchpadCmd(&ow, &ow.ids[0], (uint8_t *) &data);
+        }
         //do something while sensor work
         int k = 10;
         while (k > 0) {

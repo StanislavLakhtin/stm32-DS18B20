@@ -16,14 +16,19 @@
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
 
-#define ONEWIRE_SEARCH 0xf0
+#define ONEWIRE_SEARCH 0xF0
+#define ONEWIRE_SKIP_ROM 0xCC
+#define ONEWIRE_READ_ROM 0x33
+#define ONEWIRE_MATCH_ROM 0x55
+#define ONEWIRE_CONVERT_TEMPERATURE 0x44
+#define ONEWIRE_READ_SCRATCHPAD 0xBE
 
 #ifndef MAXDEVICES_ON_THE_BUS
 #define MAXDEVICES_ON_THE_BUS 5
 #endif
 
-#define WIRE_0	0x00
-#define WIRE_1	0xff
+#define WIRE_0    0x00
+#define WIRE_1    0xff
 #define OW_READ 0xff
 
 //#define USART_CONSOLE USART2
@@ -43,16 +48,30 @@ typedef struct {
 } OneWire;
 
 void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART
-void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity, uint32_t flowcontrol);
+void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
+                 uint32_t flowcontrol);
+
 uint8_t getUsartIndex(uint32_t usart);
 
-uint8_t* byteToBits(uint8_t ow_byte, uint8_t *bits);
+uint8_t *byteToBits(uint8_t ow_byte, uint8_t *bits);
 
-void    owInit(OneWire* ow);
-uint16_t     owReset(OneWire* ow);
-void    owSearchCmd(OneWire* ow);
-void    owSend(OneWire* ow, uint16_t data);
-void    owSendByte(OneWire* ow, uint8_t data);
+void owInit(OneWire *ow);
+
+uint16_t owResetCmd(OneWire *ow);
+
+void owSearchCmd(OneWire *ow);
+
+void owSkipRomCmd(OneWire *ow);
+
+void owMatchRomCmd(OneWire *ow, RomCode *rom);
+
+void owConvertTemperatureCmd(OneWire *ow, RomCode *rom);
+
+uint8_t* owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data);
+
+void owSend(OneWire *ow, uint16_t data);
+
+void owSendByte(OneWire *ow, uint8_t data);
 
 uint16_t owEchoRead(OneWire *ow);
 

@@ -2,6 +2,7 @@
 #include <libopencm3/stm32/gpio.h>
 
 #define ONEWIRE_USART3 // Должно быть объявлено ДО include "OneWire.h", чтобы был добавлен обработчик соответствующего прерывания
+
 #include "OneWire.h"
 
 /* STM32 в 72 MHz. */
@@ -47,26 +48,27 @@ int main(void) {
     gpio_setup();
 
     ow.usart = USART3;
-    owInit(&ow);
+    owSearchCmd(&ow);
 
-    //usart_setup(USART2, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE); //отладочный USART
+    uint8_t data[8];
+    bool readWrite = true;
 
-    uint32_t step=0, i;
-    /* Blink the LEDs (PC13 and PB4) on the board. */
+    uint32_t step = 0, i;
     while (1) {
-        //printf(" attempt %lu, 1wire init said: %x\n", step, );
-        owReset(&ow);
-        owSearchCmd(&ow);
+        if (readWrite)
+            owConvertTemperatureCmd(&ow, &ow.ids[0]);
+        else
+            owReadScratchpadCmd(&ow, &ow.ids[0], data);
         int k = 10;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
-            uint32_t p = 800000;
+            uint32_t p = 8000000;
             for (i = 0; i < p; i++)    /* Wait a bit. */
                     __asm__("nop");
             k--;
         }
+        readWrite = !readWrite;
         step++;
     }
-
     return 0;
 }

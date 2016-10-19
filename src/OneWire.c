@@ -85,7 +85,7 @@ void owInit(OneWire *ow) {
  * @return Возвращает 1 если на шине кто-то есть и 0 в противном случае
  */
 
-uint16_t owReset(OneWire *ow) {
+uint16_t owResetCmd(OneWire *ow) {
     usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
     owSend(ow, 0xF0); // Send RESET
@@ -168,6 +168,13 @@ uint8_t bitsToByte(uint8_t *bits) {
     return target_byte;
 }
 
+int8_t owCRC(uint8_t crc, uint8_t b) {
+    for (uint8_t p = 8; p; p--) {
+        crc = ((crc ^ b) & 1) ? (crc >> 1) ^ 0b10001100 : (crc >> 1);
+        b >>= 1;
+    }
+    return crc;
+}
 
 /**
  * Метод поиска устройств на шине 1Wire
@@ -181,7 +188,7 @@ void owSearchCmd(OneWire *ow) {
     //очищаем все ранее найденные устройства
     owInit(ow);
     while (devNum < MAXDEVICES_ON_THE_BUS && oneMoreDevice) {
-        owReset(ow);
+        owResetCmd(ow);
         // посылка команды ОЧЕРЕДНОГО устройства на поиск
         owSendByte(ow, ONEWIRE_SEARCH);
         // будем двигаться от МЛАДШЕГО БИТА К СТАРШЕМУ до тех пор, пока не достигнем старшего или пока не достигнем
@@ -215,15 +222,51 @@ void owSearchCmd(OneWire *ow) {
             // сохраняем бит
             if (sB == 1)
                 *(readBuffer) |= 1 << bC % 8;
-            else
-                *(readBuffer) &= ~(1 << bC % 8);
             uint8_t answerBit = (sB == 0) ? WIRE_0 : WIRE_1;
             owSend(ow, answerBit);
             //*(((uint8_t *) &ow->ids[devNum]) + 7 - bC) = readBuffer;
             bC++;
         }
+        uint8_t crcCheck = 0x00;
+        int i = 7;
+        for (; i > 0; i--)
+            crcCheck = owCRC(crcCheck, *(((uint8_t *) &ow->ids[devNum]) + i)); //todo что делать, если не получился 0?
         devNum++;
     }
+}
+
+void owSkipRomCmd(OneWire *ow) {
+    owResetCmd(ow);
+    owSendByte(ow, ONEWIRE_SKIP_ROM);
+}
+
+void owMatchRomCmd(OneWire *ow, RomCode *rom) {
+    owResetCmd(ow);
+    owSendByte(ow, ONEWIRE_MATCH_ROM);
+    int i = 7;
+    for (; i >= 0; i--)
+        owSendByte(ow, *(((uint8_t *) rom) + i));
+}
+
+void owConvertTemperatureCmd(OneWire *ow, RomCode *rom) {
+    owMatchRomCmd(ow, rom);
+    owSendByte(ow, ONEWIRE_CONVERT_TEMPERATURE);
+}
+
+uint8_t* owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data){
+    owMatchRomCmd(ow, rom);
+    uint16_t b=0;
+    owSendByte(ow, ONEWIRE_READ_SCRATCHPAD);
+    while (b<64) {
+        owSend(ow, OW_READ); // чтение прямого бита
+        uint8_t cB = owReadSlot(owEchoRead(ow));
+        owSend(ow, OW_READ);
+        uint8_t cB_inverse = owReadSlot(owEchoRead(ow));
+        uint8_t answerBit = (cB == 0) ? WIRE_0 : WIRE_1;
+        owSend(ow, answerBit);
+        b++;
+    }
+    return data;
 }
 
 #ifdef _STDIO_H_ //should be #include <stdio.h> & <errno.h> & #define USART_CONSOLE to use printf

@@ -91,17 +91,8 @@ int main(void) {
         if (owResetCmd(&ow) != ONEWIRE_NOBODY) {    // is anybody on the bus?
             owSearchCmd(&ow);                       // take them romId's
             for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
-                if (ow.ids[i].family == DS18B20) {
-                    /*if (readWrite) {
-                        //owWriteDS18B20ScratchpadCmd(&ow, &ow.ids[0], 0xff, 0xff, 0x7f); //TH = 0x20 TL=0x40 CONF (R1R2=00) 9bit precise
-                        owConvertTemperatureCmd(&ow, &ow.ids[i]);
-                        pDelay = 2500000;
-                    } else {
-                        Scratchpad_DS18B20 data; //buffer for reading scratchpad's
-                        owReadScratchpadCmd(&ow, &ow.ids[i], (uint8_t *) &data);
-                        pDelay = 1000000;
-                    }*/
-                    Temperature t = readTemperature(&ow, &ow.ids[i], true);
+                if (ow.ids[i].family == DS18B20 || ow.ids[i].family == DS18S20) {
+                    Temperature t = readTemperature(&ow, &ow.ids[i], true); //it will return PREVIOUS value and will send new measure command
                     RomCode *r = &ow.ids[i];
                     printf("DS18B20 (SN: %x%x%x%x%x%x), Temp: %3d.%d \n", r->code[0], r->code[1], r->code[2],
                            r->code[3], r->code[4], r->code[5], t.inCelsus, t.frac);
@@ -111,7 +102,7 @@ int main(void) {
         } else {
             pDelay = 8000000;
         }
-        //do something while sensor work
+        //do something while sensor calculate
         int k = 10;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */

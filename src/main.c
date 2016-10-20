@@ -109,6 +109,7 @@ int main(void) {
                                r->code[3], r->code[4], r->code[5]);
                         break;
                 }
+                pDelay = 1200000;
             }
         } else {
             pDelay = 8000000;

@@ -53,31 +53,39 @@ int main(void) {
     gpio_setup();
 
     ow.usart = USART3;
-    owSearchCmd(&ow);
 
-    DS18B20_Scratchpad data;
+    DS18B20_Scratchpad data; //buffer for reading scratchpad's
     bool readWrite = true;
+    uint32_t pDelay, i;
 
-    uint32_t step = 0, i;
     while (1) {
-        if (ow.ids[0].family == 0x28) {
-            if (readWrite) {
-                //owWriteDS18B20ScratchpadCmd(&ow, &ow.ids[0], 0xff, 0xff, 0x7f); //TH = 0x20 TL=0x40 CONF (R1R2=00) 9bit precise
-                owConvertTemperatureCmd(&ow, &ow.ids[0]);
-            } else
-                owReadScratchpadCmd(&ow, &ow.ids[0], (uint8_t *) &data);
+        if (owResetCmd(&ow) != ONEWIRE_NOBODY) {    // is anybody on the bus?
+            owSearchCmd(&ow);                       // take them romId's
+            for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
+                if (ow.ids[i].family == DS18B20) {
+                    if (readWrite) {
+                        //owWriteDS18B20ScratchpadCmd(&ow, &ow.ids[0], 0xff, 0xff, 0x7f); //TH = 0x20 TL=0x40 CONF (R1R2=00) 9bit precise
+                        owConvertTemperatureCmd(&ow, &ow.ids[i]);
+                        pDelay = 2500000;
+                    } else {
+                        owReadScratchpadCmd(&ow, &ow.ids[i], (uint8_t *) &data);
+                        pDelay = 1000000;
+                    }
+                }
+            }
+        } else {
+            pDelay = 8000000;
         }
         //do something while sensor work
         int k = 10;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
-            uint32_t p = 8000000;
-            for (i = 0; i < p; i++)    /* Wait a bit. */
+            for (i = 0; i < pDelay; i++)    /* Wait a bit. */
                     __asm__("nop");
             k--;
         }
         readWrite = !readWrite;
-        step++;
     }
+
     return 0;
 }

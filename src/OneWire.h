@@ -16,6 +16,7 @@
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
 
+#define ONEWIRE_NOBODY 0xF0
 #define ONEWIRE_SEARCH 0xF0
 #define ONEWIRE_SKIP_ROM 0xCC
 #define ONEWIRE_READ_ROM 0x33
@@ -29,6 +30,9 @@
 #ifndef MAXDEVICES_ON_THE_BUS
 #define MAXDEVICES_ON_THE_BUS 5
 #endif
+
+#define DS18B20 0x28
+#define DS18S20 0x10
 
 #define WIRE_0    0x00
 #define WIRE_1    0xff
@@ -81,6 +85,8 @@ void owCopyScratchpadCmd(OneWire *ow, RomCode *rom);
 void owRecallE2Cmd(OneWire *ow, RomCode *rom);
 
 void owWriteDS18B20ScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl, uint8_t conf);
+
+uint16_t readTemp16x(uint8_t *scratchpad);
 
 void owSend(OneWire *ow, uint16_t data);
 

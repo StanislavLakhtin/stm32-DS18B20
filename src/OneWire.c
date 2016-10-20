@@ -178,8 +178,9 @@ int8_t owCRC(uint8_t crc, uint8_t b) {
 }
 
 /**
- * Метод поиска устройств на шине 1Wire
- * Если были возвращены все возможные устройства, циклически возвращается первое
+ * Method for SEARCH any devices on the bus and put it on the ow->ids
+ * If MAXDEVICE_ON_THE_BUS smaller then count of real devices
+ * @param ow -- OneWire pointer
  */
 void owSearchCmd(OneWire *ow) {
     uint8_t devNum = 0;
@@ -254,11 +255,31 @@ void owConvertTemperatureCmd(OneWire *ow, RomCode *rom) {
     owSendByte(ow, ONEWIRE_CONVERT_TEMPERATURE);
 }
 
+/**
+ * Method for reading scratchad DS18B20 OR DS18S20
+ * If sensor DS18B20 then data MUST be at least 9 byte
+ * If sensor DS18S20 then data MUST be at least 2 byte
+ * @param ow -- OneWire pointer
+ * @param rom -- selected device on the bus
+ * @param data -- buffer for data
+ * @return data
+ */
 uint8_t *owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data) {
     owMatchRomCmd(ow, rom);
-    uint16_t b = 0;
+    uint16_t b = 0, p, bb;
+    switch (rom->family ) {
+        case DS18B20:
+            p = 72;
+            break;
+        case DS18S20:
+            p = 16;
+            break;
+        default:
+            return data;
+
+    }
     owSendByte(ow, ONEWIRE_READ_SCRATCHPAD);
-    while (b < 72) {
+    while (b < p) {
         owSend(ow, OW_READ); // чтение прямого бита
         data[8 - b / 8] |= owReadSlot(owEchoRead(ow)) << b % 8;
         b++;
@@ -267,6 +288,8 @@ uint8_t *owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data) {
 }
 
 void owWriteDS18B20Scratchpad(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl, uint8_t conf) {
+    if (rom->family != DS18B20)
+        return;
     owMatchRomCmd(ow, rom);
     owSendByte(ow, ONEWIRE_WRITE_SCRATCHPAD);
     owSendByte(ow, th);

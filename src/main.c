@@ -1,5 +1,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <stdio.h>
+#include <errno.h>
 
 // Должно быть объявлено ДО include "OneWire.h", чтобы был добавлен обработчик соответствующего прерывания
 //#define ONEWIRE_UART5
@@ -8,30 +10,48 @@
 //#define ONEWIRE_USART2
 //#define ONEWIRE_USART1
 
+//#define MAXDEVICES_ON_THE_BUS 3
+
 #include "OneWire.h"
+
+#define USART_CONSOLE USART2
+
+int _write(int file, char *ptr, int len);
 
 /* STM32 в 72 MHz. */
 static void clock_setup(void) {
     rcc_clock_setup_in_hse_8mhz_out_72mhz();
 
     /* Enable GPIOB, GPIOC, and AFIO clocks. */
-    //rcc_periph_clock_enable(RCC_GPIOA);
+    rcc_periph_clock_enable(RCC_GPIOA);
     rcc_periph_clock_enable(RCC_GPIOB);
     rcc_periph_clock_enable(RCC_GPIOC);
 
     rcc_periph_clock_enable(RCC_AFIO);
 
     /* Enable clocks for USARTs. */
-    //rcc_periph_clock_enable(RCC_USART2); //включить, если используется отладка
+    rcc_periph_clock_enable(RCC_USART2); //включить, если используется отладка
 #ifdef ONEWIRE_USART3
     rcc_periph_clock_enable(RCC_USART3);
 #endif
 }
 
+int _write(int file, char *ptr, int len) {
+    int i;
+
+    if (file == 1) {
+        for (i = 0; i < len; i++)
+            usart_send_blocking(USART_CONSOLE, ptr[i]);
+        return i;
+    }
+    errno = EIO;
+    return -1;
+}
+
 
 static void gpio_setup(void) {
-    //gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_10_MHZ,
-    //              GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART2_TX | GPIO_USART2_RX);
+    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_10_MHZ,
+                  GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART2_TX | GPIO_USART2_RX);
 
     gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_10_MHZ,
                   GPIO_CNF_OUTPUT_ALTFN_OPENDRAIN, GPIO_USART3_TX | GPIO_USART3_RX);
@@ -41,7 +61,17 @@ static void gpio_setup(void) {
 
     AFIO_MAPR |= AFIO_MAPR_SWJ_CFG_FULL_SWJ_NO_JNTRST;
 
-    /* Преконфигурация LED. */
+    /* Preconf USART2 for output*/
+    // Настраиваем
+    usart_set_baudrate(USART_CONSOLE, 115200);
+    usart_set_databits(USART_CONSOLE, 8);
+    usart_set_stopbits(USART_CONSOLE, USART_STOPBITS_1);
+    usart_set_mode(USART_CONSOLE, USART_MODE_TX_RX);
+    usart_set_parity(USART_CONSOLE, USART_PARITY_NONE);
+    usart_set_flow_control(USART_CONSOLE, USART_FLOWCONTROL_NONE);
+    usart_enable(USART_CONSOLE);
+
+    /* Preconf LED. */
     gpio_clear(GPIOC, GPIO13);
 }
 
@@ -54,7 +84,6 @@ int main(void) {
 
     ow.usart = USART3;
 
-    DS18B20_Scratchpad data; //buffer for reading scratchpad's
     bool readWrite = true;
     uint32_t pDelay, i;
 
@@ -63,14 +92,20 @@ int main(void) {
             owSearchCmd(&ow);                       // take them romId's
             for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
                 if (ow.ids[i].family == DS18B20) {
-                    if (readWrite) {
+                    /*if (readWrite) {
                         //owWriteDS18B20ScratchpadCmd(&ow, &ow.ids[0], 0xff, 0xff, 0x7f); //TH = 0x20 TL=0x40 CONF (R1R2=00) 9bit precise
                         owConvertTemperatureCmd(&ow, &ow.ids[i]);
                         pDelay = 2500000;
                     } else {
+                        Scratchpad_DS18B20 data; //buffer for reading scratchpad's
                         owReadScratchpadCmd(&ow, &ow.ids[i], (uint8_t *) &data);
                         pDelay = 1000000;
-                    }
+                    }*/
+                    Temperature t = readTemperature(&ow, &ow.ids[i], true);
+                    RomCode *r = &ow.ids[i];
+                    printf("DS18B20 (SN: %x%x%x%x%x%x), Temp: %3d.%d \n", r->code[0], r->code[1], r->code[2],
+                           r->code[3], r->code[4], r->code[5], t.inCelsus, t.frac);
+                    pDelay = 1000000;
                 }
             }
         } else {

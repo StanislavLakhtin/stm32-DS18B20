@@ -35,8 +35,11 @@ void usart_enable_halfduplex(uint32_t usart) {
  */
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
                  uint32_t flowcontrol) {
-    uint8_t irqNumber = NVIC_USART1_IRQ;
+    uint8_t irqNumber = NVIC_USAGE_FAULT_IRQ;
     switch (usart) {
+        case (USART1):
+            irqNumber = NVIC_USART1_IRQ;
+            break;
         case (USART2):
             irqNumber = NVIC_USART2_IRQ;
             break;
@@ -49,6 +52,8 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
         case (UART5):
             irqNumber = NVIC_UART5_IRQ;
             break;
+        default:
+            return;
     }
     nvic_disable_irq(irqNumber);
     usart_disable(usart);
@@ -265,23 +270,27 @@ void owConvertTemperatureCmd(OneWire *ow, RomCode *rom) {
  * @return data
  */
 uint8_t *owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data) {
-    owMatchRomCmd(ow, rom);
-    uint16_t b = 0, p, bb;
-    switch (rom->family ) {
+    uint16_t b = 0, p;
+    switch (rom->family) {
         case DS18B20:
-            p = 72;
-            break;
         case DS18S20:
-            p = 16;
+            p = 72;
             break;
         default:
             return data;
 
     }
+    owMatchRomCmd(ow, rom);
     owSendByte(ow, ONEWIRE_READ_SCRATCHPAD);
     while (b < p) {
-        owSend(ow, OW_READ); // чтение прямого бита
-        data[8 - b / 8] |= owReadSlot(owEchoRead(ow)) << b % 8;
+        uint8_t pos = (uint8_t) ((p - 8) / 8 - (b / 8));
+        owSend(ow, OW_READ);
+        uint8_t bt = owReadSlot(owEchoRead(ow));
+
+        if (bt == 1)
+            data[pos] |= 1 << b % 8;
+        else
+            data[pos] &= ~(1 << b % 8);
         b++;
     }
     return data;
@@ -294,7 +303,47 @@ void owWriteDS18B20Scratchpad(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl,
     owSendByte(ow, ONEWIRE_WRITE_SCRATCHPAD);
     owSendByte(ow, th);
     owSendByte(ow, tl);
-    owSendByte(ow,conf);
+    owSendByte(ow, conf);
+}
+
+/**
+ * Get last mesaured temperature from DS18B20 or DS18S20. These temperature MUST be measured in previous
+ * opearions. If you want to measure new value you can set reSense in true. In this case next invocation
+ * that method will return value calculated in that step.
+ * @param ow -- OneWire bus pointer
+ * @param rom -- selected device
+ * @param reSense -- do you want resense temp for next time?
+ * @return struct with data
+ */
+Temperature readTemperature(OneWire *ow, RomCode *rom, bool reSense) {
+    Temperature t;
+    t.inCelsus = 0x00;
+    t.frac = 0x00;
+    int8_t sign;
+    uint8_t pad[9];
+    Scratchpad_DS18B20 *sp = (Scratchpad_DS18B20 *)&pad;
+    Scratchpad_DS18S20 *spP = (Scratchpad_DS18S20 *)&pad;
+    switch (rom->family) {
+        case DS18B20:
+            owReadScratchpadCmd(ow, rom, pad);
+            sign = (int8_t) ((sp->temp_msb & 0xf8) == 0x00 ? 1 : -1);
+            t.inCelsus = sign * (((sp->temp_msb & 0x07) << 4) |
+                         ((sp->temp_lsb >> 4) & 0x0f));
+            t.frac = (uint8_t) ((((sp->temp_lsb & 0x0F)) * 10) >> 4);
+            break;
+        case DS18S20:
+            owReadScratchpadCmd(ow, rom, pad);
+            sign = (int8_t) ((spP->temp_msb & 0xff) == 0x00 ? 1 : -1);
+            t.inCelsus = sign * ((spP->temp_lsb >> 1) & 0x7f);
+            t.frac = (uint8_t) 5 * (spP->temp_lsb & 0x01);
+            break;
+        default:
+            return t;
+    }
+    if (reSense) {
+        owConvertTemperatureCmd(ow, rom);
+    }
+    return t;
 }
 
 void owCopyScratchpadCmd(OneWire *ow, RomCode *rom) {
@@ -306,17 +355,3 @@ void owRecallE2Cmd(OneWire *ow, RomCode *rom) {
     owMatchRomCmd(ow, rom);
     owSendByte(ow, ONEWIRE_RECALL_E2);
 }
-
-#ifdef _STDIO_H_ //should be #include <stdio.h> & <errno.h> & #define USART_CONSOLE to use printf
-int _write(int file, char *ptr, int len) {
-    int i;
-
-    if (file == 1) {
-        for (i = 0; i < len; i++)
-            usart_send_blocking(USART_CONSOLE, ptr[i]);
-        return i;
-    }
-    errno = EIO;
-    return -1;
-}
-#endif

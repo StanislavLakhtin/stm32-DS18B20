@@ -38,10 +38,13 @@
 #define WIRE_1    0xff
 #define OW_READ 0xff
 
-//#define USART_CONSOLE USART2
-
 volatile uint8_t recvFlag;
 volatile uint16_t rc_buffer[5];
+
+typedef struct {
+    int16_t inCelsus;
+    uint8_t frac;
+} Temperature;
 
 typedef struct {
     uint8_t crc;
@@ -57,7 +60,18 @@ typedef struct {
     uint8_t th;
     uint8_t temp_msb;
     uint8_t temp_lsb;
-} DS18B20_Scratchpad;
+} Scratchpad_DS18B20;
+
+typedef struct {
+    uint8_t crc;
+    uint8_t count_per;
+    uint8_t count_remain;
+    uint8_t reserved[2];
+    uint8_t tl;
+    uint8_t th;
+    uint8_t temp_msb;
+    uint8_t temp_lsb;
+} Scratchpad_DS18S20;
 
 typedef struct {
     uint32_t usart;
@@ -86,7 +100,7 @@ void owRecallE2Cmd(OneWire *ow, RomCode *rom);
 
 void owWriteDS18B20ScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl, uint8_t conf);
 
-uint16_t readTemp16x(uint8_t *scratchpad);
+Temperature readTemperature(OneWire *ow, RomCode *rom, bool reSense);
 
 void owSend(OneWire *ow, uint16_t data);
 

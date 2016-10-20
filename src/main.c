@@ -91,12 +91,23 @@ int main(void) {
         if (owResetCmd(&ow) != ONEWIRE_NOBODY) {    // is anybody on the bus?
             owSearchCmd(&ow);                       // take them romId's
             for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
-                if (ow.ids[i].family == DS18B20 || ow.ids[i].family == DS18S20) {
-                    Temperature t = readTemperature(&ow, &ow.ids[i], true); //it will return PREVIOUS value and will send new measure command
-                    RomCode *r = &ow.ids[i];
-                    printf("DS18B20 (SN: %x%x%x%x%x%x), Temp: %3d.%d \n", r->code[0], r->code[1], r->code[2],
-                           r->code[3], r->code[4], r->code[5], t.inCelsus, t.frac);
-                    pDelay = 1000000;
+                RomCode *r = &ow.ids[i];
+                Temperature t;
+                switch (r->family) {
+                    case DS18B20:
+                        t = readTemperature(&ow, &ow.ids[i], true); //it will return PREVIOUS value and will send new measure command
+                        printf("DS18B20 (SN: %x%x%x%x%x%x), Temp: %3d.%d \n", r->code[0], r->code[1], r->code[2],
+                               r->code[3], r->code[4], r->code[5], t.inCelsus, t.frac);
+                        break;
+                    case DS18S20:
+                        t = readTemperature(&ow, &ow.ids[i], true);
+                        printf("DS18S20 (SN: %x%x%x%x%x%x), Temp: %3d.%d \n", r->code[0], r->code[1], r->code[2],
+                               r->code[3], r->code[4], r->code[5], t.inCelsus, t.frac);
+                        break;
+                    default:
+                        printf("UNKNOWN Family:%x (SN: %x%x%x%x%x%x)\n", r->family, r->code[0], r->code[1], r->code[2],
+                               r->code[3], r->code[4], r->code[5]);
+                        break;
                 }
             }
         } else {

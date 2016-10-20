@@ -1,7 +1,12 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 
-#define ONEWIRE_USART3 // Должно быть объявлено ДО include "OneWire.h", чтобы был добавлен обработчик соответствующего прерывания
+// Должно быть объявлено ДО include "OneWire.h", чтобы был добавлен обработчик соответствующего прерывания
+//#define ONEWIRE_UART5
+//#define ONEWIRE_UART4
+#define ONEWIRE_USART3
+//#define ONEWIRE_USART2
+//#define ONEWIRE_USART1
 
 #include "OneWire.h"
 

@@ -104,6 +104,8 @@ int main(void) {
                         printf("DS18S20 (SN: %x%x%x%x%x%x), Temp: %3d.%d \n", r->code[0], r->code[1], r->code[2],
                                r->code[3], r->code[4], r->code[5], t.inCelsus, t.frac);
                         break;
+                    case 0x00:
+                        break;
                     default:
                         printf("UNKNOWN Family:%x (SN: %x%x%x%x%x%x)\n", r->family, r->code[0], r->code[1], r->code[2],
                                r->code[3], r->code[4], r->code[5]);

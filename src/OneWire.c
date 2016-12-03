@@ -195,6 +195,7 @@ void owSearchCmd(OneWire *ow) {
     //очищаем все ранее найденные устройства
     owInit(ow);
     while (devNum < MAXDEVICES_ON_THE_BUS && oneMoreDevice) {
+        oneMoreDevice = false;
         owResetCmd(ow);
         // посылка команды ОЧЕРЕДНОГО устройства на поиск
         owSendByte(ow, ONEWIRE_SEARCH);

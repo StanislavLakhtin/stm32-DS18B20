@@ -13,7 +13,66 @@
 
  */
 
+#ifdef ONEWIRE_UART5
+void usart3_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(UART5) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(UART5) & USART_SR_RXNE) != 0)) {
 
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[4] = usart_recv_blocking(UART5);
+        recvFlag &= ~(1 << 4);
+    }
+}
+#endif
+#ifdef ONEWIRE_UART4
+void uart4_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(UART4) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(UART4) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[3] = usart_recv_blocking(UART4);
+        recvFlag &= ~(1 << 3);
+    }
+}
+#endif
+#ifdef ONEWIRE_USART3
+void usart3_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[2] = usart_recv_blocking(USART3);
+        recvFlag &= ~(1 << 2);
+    }
+}
+#endif
+#ifdef ONEWIRE_USART2
+void usart2_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(USART2) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART2) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[1] = usart_recv_blocking(USART3);
+        recvFlag &= ~(1 << 1);
+    }
+}
+#endif
+#ifdef ONEWIRE_USART1
+void usart1_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[0] = usart_recv_blocking(USART3);
+        recvFlag &= ~1;
+    }
+}
+#endif
 
 /// Метод реализует переключение работы USART в half-duplex режим. Метод не работает для 1wire реализации
 void usart_enable_halfduplex(uint32_t usart) {

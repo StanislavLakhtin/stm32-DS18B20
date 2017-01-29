@@ -13,6 +13,8 @@
 #ifndef STM32_DS18X20_ONEWIRE_H
 #define STM32_DS18X20_ONEWIRE_H
 
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
 
@@ -36,7 +38,7 @@
 
 #define WIRE_0    0x00
 #define WIRE_1    0xff
-#define OW_READ 0xff
+#define OW_READ   0xff
 
 volatile uint8_t recvFlag;
 volatile uint16_t rc_buffer[5];
@@ -84,7 +86,9 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
 
 uint16_t owResetCmd(OneWire *ow);
 
-void owSearchCmd(OneWire *ow);
+int owSearchCmd(OneWire *ow);
+
+int owScanCmd(OneWire *ow);
 
 void owSkipRomCmd(OneWire *ow);
 
@@ -107,5 +111,66 @@ void owSend(OneWire *ow, uint16_t data);
 void owSendByte(OneWire *ow, uint8_t data);
 
 uint16_t owEchoRead(OneWire *ow);
+
+#ifdef ONEWIRE_UART5
+void usart3_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(UART5) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(UART5) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[4] = usart_recv_blocking(UART5);
+        recvFlag &= ~(1 << 4);
+    }
+}
+#endif
+#ifdef ONEWIRE_UART4
+void uart4_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(UART4) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(UART4) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[3] = usart_recv_blocking(UART4);
+        recvFlag &= ~(1 << 3);
+    }
+}
+#endif
+#ifdef ONEWIRE_USART3
+/*void usart3_isr(void) {
+  *//* Проверяем, что мы вызвали прерывание из-за RXNE. *//*
+  if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
+      ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
+
+    *//* Получаем данные из периферии и сбрасываем флаг*//*
+    rc_buffer[2] = usart_recv(USART3);
+    recvFlag &= ~(1 << 2);
+  }
+}*/
+#endif
+#ifdef ONEWIRE_USART2
+void usart2_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(USART2) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART2) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[1] = usart_recv_blocking(USART3);
+        recvFlag &= ~(1 << 1);
+    }
+}
+#endif
+#ifdef ONEWIRE_USART1
+void usart1_isr(void) {
+    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
+
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        rc_buffer[0] = usart_recv_blocking(USART3);
+        recvFlag &= ~1;
+    }
+}
+#endif
 
 #endif //STM32_DS18X20_ONEWIRE_H

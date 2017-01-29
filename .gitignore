@@ -7,4 +7,3 @@
 .gdb_history
 .DS_Store
 /libopencm3
-/cmake-build-debug

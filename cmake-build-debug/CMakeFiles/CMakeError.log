@@ -1,0 +1,252 @@
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: 
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -c
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -Aa
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -D__CLASSIC_C__
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Checking whether the C compiler is IAR using "" did not match "IAR .+ Compiler":
+arm-none-eabi-gcc: error: GNU: No such file or directory
+arm-none-eabi-gcc: fatal error: no input files
+compilation terminated.
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: /usr/bin/arm-none-eabi-g++ GNU
+Build flags: 
+Id flags: 
+
+The output was:
+1
+arm-none-eabi-g++: error: GNU: No such file or directory
+
+
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: /usr/bin/arm-none-eabi-g++ GNU
+Build flags: 
+Id flags: -c
+
+The output was:
+1
+arm-none-eabi-g++: error: GNU: No such file or directory
+
+
+Checking whether the CXX compiler is IAR using "" did not match "IAR .+ Compiler":
+arm-none-eabi-g++: error: GNU: No such file or directory
+arm-none-eabi-g++: fatal error: no input files
+compilation terminated.
+Determining if the C compiler works failed with the following output:
+Change Dir: /home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_18ca6/fast"
+/usr/bin/make -f CMakeFiles/cmTC_18ca6.dir/build.make CMakeFiles/cmTC_18ca6.dir/build
+make[1]: Entering directory '/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_18ca6.dir/testCCompiler.c.obj
+/usr/bin/arm-none-eabi-gcc GNU    -o CMakeFiles/cmTC_18ca6.dir/testCCompiler.c.obj   -c /home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp/testCCompiler.c
+arm-none-eabi-gcc: error: GNU: No such file or directory
+CMakeFiles/cmTC_18ca6.dir/build.make:65: recipe for target 'CMakeFiles/cmTC_18ca6.dir/testCCompiler.c.obj' failed
+make[1]: *** [CMakeFiles/cmTC_18ca6.dir/testCCompiler.c.obj] Error 1
+make[1]: Leaving directory '/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_18ca6/fast' failed
+make: *** [cmTC_18ca6/fast] Error 2
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: 
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -c
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -Aa
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -D__CLASSIC_C__
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Checking whether the C compiler is IAR using "" did not match "IAR .+ Compiler":
+arm-none-eabi-gcc: error: GNU: No such file or directory
+arm-none-eabi-gcc: fatal error: no input files
+compilation terminated.
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: /usr/bin/arm-none-eabi-g++ GNU
+Build flags: 
+Id flags: 
+
+The output was:
+1
+arm-none-eabi-g++: error: GNU: No such file or directory
+
+
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: /usr/bin/arm-none-eabi-g++ GNU
+Build flags: 
+Id flags: -c
+
+The output was:
+1
+arm-none-eabi-g++: error: GNU: No such file or directory
+
+
+Checking whether the CXX compiler is IAR using "" did not match "IAR .+ Compiler":
+arm-none-eabi-g++: error: GNU: No such file or directory
+arm-none-eabi-g++: fatal error: no input files
+compilation terminated.
+Determining if the C compiler works failed with the following output:
+Change Dir: /home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_ce814/fast"
+/usr/bin/make -f CMakeFiles/cmTC_ce814.dir/build.make CMakeFiles/cmTC_ce814.dir/build
+make[1]: Entering directory '/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_ce814.dir/testCCompiler.c.obj
+/usr/bin/arm-none-eabi-gcc GNU    -o CMakeFiles/cmTC_ce814.dir/testCCompiler.c.obj   -c /home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp/testCCompiler.c
+arm-none-eabi-gcc: error: GNU: No such file or directory
+CMakeFiles/cmTC_ce814.dir/build.make:65: recipe for target 'CMakeFiles/cmTC_ce814.dir/testCCompiler.c.obj' failed
+make[1]: *** [CMakeFiles/cmTC_ce814.dir/testCCompiler.c.obj] Error 1
+make[1]: Leaving directory '/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_ce814/fast' failed
+make: *** [cmTC_ce814/fast] Error 2
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: 
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -c
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -Aa
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /usr/bin/arm-none-eabi-gcc GNU
+Build flags: 
+Id flags: -D__CLASSIC_C__
+
+The output was:
+1
+arm-none-eabi-gcc: error: GNU: No such file or directory
+
+
+Checking whether the C compiler is IAR using "" did not match "IAR .+ Compiler":
+arm-none-eabi-gcc: error: GNU: No such file or directory
+arm-none-eabi-gcc: fatal error: no input files
+compilation terminated.
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: /usr/bin/arm-none-eabi-g++ GNU
+Build flags: 
+Id flags: 
+
+The output was:
+1
+arm-none-eabi-g++: error: GNU: No such file or directory
+
+
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: /usr/bin/arm-none-eabi-g++ GNU
+Build flags: 
+Id flags: -c
+
+The output was:
+1
+arm-none-eabi-g++: error: GNU: No such file or directory
+
+
+Checking whether the CXX compiler is IAR using "" did not match "IAR .+ Compiler":
+arm-none-eabi-g++: error: GNU: No such file or directory
+arm-none-eabi-g++: fatal error: no input files
+compilation terminated.
+Determining if the C compiler works failed with the following output:
+Change Dir: /home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_6dc14/fast"
+/usr/bin/make -f CMakeFiles/cmTC_6dc14.dir/build.make CMakeFiles/cmTC_6dc14.dir/build
+make[1]: Entering directory '/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_6dc14.dir/testCCompiler.c.obj
+/usr/bin/arm-none-eabi-gcc GNU    -o CMakeFiles/cmTC_6dc14.dir/testCCompiler.c.obj   -c /home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp/testCCompiler.c
+arm-none-eabi-gcc: error: GNU: No such file or directory
+CMakeFiles/cmTC_6dc14.dir/build.make:65: recipe for target 'CMakeFiles/cmTC_6dc14.dir/testCCompiler.c.obj' failed
+make[1]: *** [CMakeFiles/cmTC_6dc14.dir/testCCompiler.c.obj] Error 1
+make[1]: Leaving directory '/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_6dc14/fast' failed
+make: *** [cmTC_6dc14/fast] Error 2
+
+

@@ -17,8 +17,8 @@ find_program(ARM_SIZE_TOOL arm-none-eabi-size
 find_program(ARM_AS arm-none-eabi-as
             ${TOOLCHAIN_DIR}/bin)
 
-set(CMAKE_C_COMPILER ${ARM_CC} GNU)
-set(CMAKE_CXX_COMPILER ${ARM_CXX} GNU)
+CMAKE_FORCE_C_COMPILER(${ARM_CC} GNU)
+CMAKE_FORCE_CXX_COMPILER(${ARM_CXX} GNU)
 
 set(CMAKE_ASM_FLAGS
         ${CMAKE_ASM_FLAGS} "-mcpu=cortex-m3 -mthumb")

@@ -13,74 +13,13 @@
 
  */
 
-#ifdef ONEWIRE_UART5
-void usart3_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(UART5) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(UART5) & USART_SR_RXNE) != 0)) {
-
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[4] = usart_recv_blocking(UART5);
-        recvFlag &= ~(1 << 4);
-    }
-}
-#endif
-#ifdef ONEWIRE_UART4
-void uart4_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(UART4) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(UART4) & USART_SR_RXNE) != 0)) {
-
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[3] = usart_recv_blocking(UART4);
-        recvFlag &= ~(1 << 3);
-    }
-}
-#endif
-#ifdef ONEWIRE_USART3
-void usart3_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
-
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[2] = usart_recv_blocking(USART3);
-        recvFlag &= ~(1 << 2);
-    }
-}
-#endif
-#ifdef ONEWIRE_USART2
-void usart2_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(USART2) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART2) & USART_SR_RXNE) != 0)) {
-
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[1] = usart_recv_blocking(USART3);
-        recvFlag &= ~(1 << 1);
-    }
-}
-#endif
-#ifdef ONEWIRE_USART1
-void usart1_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
-
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[0] = usart_recv_blocking(USART3);
-        recvFlag &= ~1;
-    }
-}
-#endif
-
 /// Метод реализует переключение работы USART в half-duplex режим. Метод не работает для 1wire реализации
 void usart_enable_halfduplex(uint32_t usart) {
-    USART_CR2(usart) &= ~USART_CR2_LINEN;
-    USART_CR2(usart) &= ~USART_CR2_CLKEN;
-    USART_CR3(usart) &= ~USART_CR3_SCEN;
-    USART_CR3(usart) &= ~USART_CR3_IREN;
-    USART_CR3(usart) |= USART_CR3_HDSEL;
+  USART_CR2(usart) &= ~USART_CR2_LINEN;
+  USART_CR2(usart) &= ~USART_CR2_CLKEN;
+  USART_CR3(usart) &= ~USART_CR3_SCEN;
+  USART_CR3(usart) &= ~USART_CR3_IREN;
+  USART_CR3(usart) |= USART_CR3_HDSEL;
 }
 
 /** Метод реализует переключение выбранного USART в нужный режим
@@ -91,55 +30,42 @@ void usart_enable_halfduplex(uint32_t usart) {
  * @param[in] mode Режим работы (USART_MODE_TX_RX, etc...)
  * @param[in] parity Контроль чётности (USART_PARITY_NONE, etc...)
  * @param[in] flowcontrol Управление потоком (USART_FLOWCONTROL_NONE, etc...)
+ *
  */
+
+uint8_t getUsartIndex(uint32_t usart);
+
 void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
                  uint32_t flowcontrol) {
-    uint8_t irqNumber = NVIC_USAGE_FAULT_IRQ;
-    switch (usart) {
-        case (USART1):
-            irqNumber = NVIC_USART1_IRQ;
-            break;
-        case (USART2):
-            irqNumber = NVIC_USART2_IRQ;
-            break;
-        case (USART3):
-            irqNumber = NVIC_USART3_IRQ;
-            break;
-        case (UART4):
-            irqNumber = NVIC_UART4_IRQ;
-            break;
-        case (UART5):
-            irqNumber = NVIC_UART5_IRQ;
-            break;
-        default:
-            return;
-    }
-    nvic_disable_irq(irqNumber);
-    usart_disable(usart);
+  uint8_t irqs[] = {NVIC_USART1_IRQ, NVIC_USART2_IRQ, NVIC_USART3_IRQ, NVIC_UART4_IRQ, NVIC_UART5_IRQ};
+  uint8_t irqNumber = irqs[getUsartIndex(usart)];
 
-    // Настраиваем
-    usart_set_baudrate(usart, baud);
-    usart_set_databits(usart, bits);
-    usart_set_stopbits(usart, stopbits);
-    usart_set_mode(usart, mode);
-    usart_set_parity(usart, parity);
-    usart_set_flow_control(usart, flowcontrol);
+  nvic_disable_irq(irqNumber);
+  usart_disable(usart);
 
-    usart_enable_rx_interrupt(usart);
+  // Настраиваем
+  usart_set_baudrate(usart, baud);
+  usart_set_databits(usart, bits);
+  usart_set_stopbits(usart, stopbits);
+  usart_set_mode(usart, mode);
+  usart_set_parity(usart, parity);
+  usart_set_flow_control(usart, flowcontrol);
 
-    usart_enable_halfduplex(usart);
-    usart_enable(usart);
-    nvic_enable_irq(irqNumber);
+  usart_enable_rx_interrupt(usart);
+
+  usart_enable_halfduplex(usart);
+  usart_enable(usart);
+  nvic_enable_irq(irqNumber);
 }
 
 void owInit(OneWire *ow) {
-    int i, k = 0;
-    for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
-        ow->ids[i].crc = 0x00;
-        ow->ids[i].family = 0x00;
-        for (k = 0; k < 6; k++)
-            ow->ids[k].code[k] = 0x00;
-    }
+  int i, k = 0;
+  for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
+    ow->ids[i].crc = 0x00;
+    ow->ids[i].family = 0x00;
+    for (k = 0; k < 6; k++)
+      ow->ids[k].code[k] = 0x00;
+  }
 
 }
 
@@ -150,59 +76,59 @@ void owInit(OneWire *ow) {
  */
 
 uint16_t owResetCmd(OneWire *ow) {
-    usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
+  usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
-    owSend(ow, 0xF0); // Send RESET
-    uint16_t owPresence = owEchoRead(ow); // Ждём PRESENCE на шине и вовзращаем, что есть
+  owSend(ow, 0xF0); // Send RESET
+  uint16_t owPresence = owEchoRead(ow); // Ждём PRESENCE на шине и вовзращаем, что есть
 
-    usart_setup(ow->usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
-    return owPresence;
+  usart_setup(ow->usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
+  return owPresence;
 }
 
 uint8_t getUsartIndex(uint32_t usart) {
-    switch (usart) {
-        case (USART1):
-            return 0;
-        case (USART2):
-            return 1;
-        case (USART3):
-            return 2;
-        case (UART4):
-            return 3;
-        case (UART5):
-            return 4;
-    }
-    return -1;
+  switch (usart) {
+    case (USART1):
+      return 0;
+    case (USART2):
+      return 1;
+    case (USART3):
+      return 2;
+    case (UART4):
+      return 3;
+    case (UART5):
+      return 4;
+  }
+  return 2; //default is USART3
 }
 
 void owSend(OneWire *ow, uint16_t data) {
-    recvFlag |= (1 << getUsartIndex(ow->usart));
-    usart_send(ow->usart, data);
-    while (!usart_get_flag(ow->usart, USART_SR_TC));
+  recvFlag |= (1 << getUsartIndex(ow->usart));
+  usart_send(ow->usart, data);
+  while (!usart_get_flag(ow->usart, USART_SR_TC));
 }
 
 uint8_t owReadSlot(uint16_t data) {
-    return (data == OW_READ) ? 1 : 0;
+  return (data == OW_READ) ? 1 : 0;
 }
 
 uint16_t owEchoRead(OneWire *ow) {
-    uint8_t i = getUsartIndex(ow->usart);
-    while (recvFlag & (1 << i));
-    return rc_buffer[i];
+  uint8_t i = getUsartIndex(ow->usart);
+  while (recvFlag & (1 << i));
+  return rc_buffer[i];
 }
 
 uint8_t *byteToBits(uint8_t ow_byte, uint8_t *bits) {
-    uint8_t i;
-    for (i = 0; i < 8; i++) {
-        if (ow_byte & 0x01) {
-            *bits = WIRE_1;
-        } else {
-            *bits = WIRE_0;
-        }
-        bits++;
-        ow_byte = ow_byte >> 1;
+  uint8_t i;
+  for (i = 0; i < 8; i++) {
+    if (ow_byte & 0x01) {
+      *bits = WIRE_1;
+    } else {
+      *bits = WIRE_0;
     }
-    return bits;
+    bits++;
+    ow_byte = ow_byte >> 1;
+  }
+  return bits;
 }
 
 /**
@@ -211,34 +137,35 @@ uint8_t *byteToBits(uint8_t ow_byte, uint8_t *bits) {
  * @param d -- данные
  */
 void owSendByte(OneWire *ow, uint8_t d) {
-    uint8_t data[8];
-    byteToBits(d, data);
-    int i;
-    for (i = 0; i < 8; ++i) {
-        owSend(ow, data[i]);
-    }
+  uint8_t data[8];
+  byteToBits(d, data);
+  int i;
+  for (i = 0; i < 8; ++i) {
+    owSend(ow, data[i]);
+  }
 }
 
 
 uint8_t bitsToByte(uint8_t *bits) {
-    uint8_t target_byte, i;
-    target_byte = 0;
-    for (i = 0; i < 8; i++) {
-        target_byte = target_byte >> 1;
-        if (*bits == WIRE_1) {
-            target_byte |= 0x80;
-        }
-        bits++;
+  uint8_t target_byte, i;
+  target_byte = 0;
+  for (i = 0; i < 8; i++) {
+    target_byte = target_byte >> 1;
+    if (*bits == WIRE_1) {
+      target_byte |= 0x80;
     }
-    return target_byte;
+    bits++;
+  }
+  return target_byte;
 }
 
 int8_t owCRC(uint8_t crc, uint8_t b) {
-    for (uint8_t p = 8; p; p--) {
-        crc = ((crc ^ b) & 1) ? (crc >> 1) ^ 0b10001100 : (crc >> 1);
-        b >>= 1;
-    }
-    return crc;
+  uint8_t p;
+  for (p = 8; p; p--) {
+    crc = ((crc ^ b) & 1) ? (crc >> 1) ^ 0b10001100 : (crc >> 1);
+    b >>= 1;
+  }
+  return crc;
 }
 
 /**
@@ -246,78 +173,171 @@ int8_t owCRC(uint8_t crc, uint8_t b) {
  * If MAXDEVICE_ON_THE_BUS smaller then count of real devices
  * @param ow -- OneWire pointer
  */
-void owSearchCmd(OneWire *ow) {
-    uint8_t devNum = 0;
-    int8_t forkBite = -1;
-    bool oneMoreDevice = true;
-    uint8_t *readBuffer; // Здесь будет накапливаться побитно ROM ID очередного устройства
-    //очищаем все ранее найденные устройства
-    owInit(ow);
-    while (devNum < MAXDEVICES_ON_THE_BUS && oneMoreDevice) {
-        oneMoreDevice = false;
-        owResetCmd(ow);
-        // посылка команды ОЧЕРЕДНОГО устройства на поиск
-        owSendByte(ow, ONEWIRE_SEARCH);
-        // будем двигаться от МЛАДШЕГО БИТА К СТАРШЕМУ до тех пор, пока не достигнем старшего или пока не достигнем
-        // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
-        // будут найдены столько, сколько было определено MAXDEVICES_ON_THE_BUS
-        // стараемся загрузить 64 бит [FAMILY CODE(1B)][ROM CODE(6B)][CRC(1B)] (ОБРАТНЫЙ ПОРЯОК БИТ)
-        uint8_t bC = 0;
-        while (bC < 64) {
-            readBuffer = ((uint8_t *) (&ow->ids[devNum]) + 7 - bC / 8);
-            // в соответствии с логикой читаем бит посылая два цикла чтения
-            // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
-            uint8_t cB, cB_inverse, sB;
-            owSend(ow, OW_READ); // чтение прямого бита
-            cB = owReadSlot(owEchoRead(ow));
-            owSend(ow, OW_READ); // чтение инверсного бита
-            cB_inverse = owReadSlot(owEchoRead(ow));
-            if ((cB == cB_inverse)) {
-                // был конфликт -- биты НЕ совпали у нескольких устройств
-                // в этм месте УЖЕ произошёл fork
-                sB = (forkBite == bC) ? 1 : 0; // мы находимся в режиме разрешения предыдущего конфликта или в новом?
-                if (sB == 0) {
-                    forkBite = bC;
-                    oneMoreDevice = true;
-                } else {
-                    oneMoreDevice = false;
-                }
+int owSearchCmd(OneWire *ow) {
+  uint8_t devNum = 0;
+  int forkBite = -1, lastFork = -1;
+  bool oneMoreDevice = false;
+  uint8_t *readBuffer; // Здесь будет накапливаться побитно ROM ID очередного устройства
+  //очищаем все ранее найденные устройства
+  owInit(ow);
+
+  do {
+    if (owResetCmd(ow) != ONEWIRE_NOBODY) {
+      // посылка команды ОЧЕРЕДНОГО устройства на поиск
+      owSendByte(ow, ONEWIRE_SEARCH);
+      // будем двигаться от МЛАДШЕГО БИТА К СТАРШЕМУ до тех пор, пока не достигнем старшего или пока не достигнем
+      // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
+      // будут найдены столько, сколько было определено MAXDEVICES_ON_THE_BUS
+      // стараемся загрузить 64 бит [FAMILY CODE(1B)][ROM CODE(6B)][CRC(1B)] (ОБРАТНЫЙ ПОРЯОК БИТ)
+      int bC = 0;
+      while (bC < 64) {
+        readBuffer = ((uint8_t *) (&ow->ids[devNum]) + 7 - bC / 8);
+        // в соответствии с логикой читаем бит посылая два цикла чтения
+        // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
+        uint8_t cB, cB_inverse, sB;
+        owSend(ow, OW_READ); // чтение прямого бита
+        cB = owReadSlot(owEchoRead(ow));
+        owSend(ow, OW_READ); // чтение инверсного бита
+        cB_inverse = owReadSlot(owEchoRead(ow));
+        if ((cB == cB_inverse)) {
+          if (cB == 1) {
+            // авария. не может быть две единицы. прерываемся c кодом аварии
+            return -1;
+          } else {
+            // был конфликт -- биты НЕ совпали у нескольких устройств
+            // в этм месте УЖЕ произошёл fork
+            sB = (forkBite < bC) ? 0 : 1; // мы находимся в режиме разрешения предыдущего конфликта или в новом?
+            if (sB == 0) {
+              forkBite = bC;
+              oneMoreDevice = true;
             } else {
-                // если прямой и инверсный биты разные, то всё ок. Просто запоминаем, что пришло
-                sB = cB;
+              oneMoreDevice = false;
             }
-            // сохраняем бит
-            if (sB == 1)
-                *(readBuffer) |= 1 << bC % 8;
-            uint8_t answerBit = (sB == 0) ? WIRE_0 : WIRE_1;
-            owSend(ow, answerBit);
-            //*(((uint8_t *) &ow->ids[devNum]) + 7 - bC) = readBuffer;
-            bC++;
+          }
+        } else {
+          // если прямой и инверсный биты разные, то всё ок. Просто запоминаем, что пришло
+          sB = cB;
         }
-        uint8_t crcCheck = 0x00;
-        int i = 7;
-        for (; i > 0; i--)
-            crcCheck = owCRC(crcCheck, *(((uint8_t *) &ow->ids[devNum]) + i)); //todo что делать, если не получился 0?
-        devNum++;
+        // сохраняем бит
+        if (sB == 1)
+          *(readBuffer) |= 1 << bC % 8;
+        uint8_t answerBit = (sB == 0) ? WIRE_0 : WIRE_1;
+        owSend(ow, answerBit);
+        //*(((uint8_t *) &ow->ids[devNum]) + 7 - bC) = readBuffer;
+        bC++;
+      }
+      uint8_t crcCheck = 0x00;
+      int i = 7;
+      for (; i > 0; i--)
+        crcCheck = owCRC(crcCheck, *(((uint8_t *) &ow->ids[devNum]) + i)); //todo что делать, если не получился 0?
+      devNum++;
     }
+  } while (devNum < MAXDEVICES_ON_THE_BUS && oneMoreDevice);
+  return devNum;
+}
+
+int owScanCmd(OneWire *ow) {
+
+  owInit(ow);
+  uint8_t devices = 0;
+  uint8_t *lastDevice;
+  uint8_t *curDevice = &ow->ids[0].code;
+  uint8_t curBit, lastCollision, currentCollision, currentSelection;
+  uint8_t ow_buf[2];
+
+  lastCollision = 0;
+  while (devices < MAXDEVICES_ON_THE_BUS) {
+    curBit = 1;
+    currentCollision = 0;
+    if (owResetCmd(ow) != ONEWIRE_NOBODY) {
+      // посылаем команду на поиск устройств
+      owSendByte(ow, ONEWIRE_SEARCH);
+
+      for (; curBit <= 64; curBit++) {
+        // читаем два бита. Основной и комплементарный
+        owSend(ow, OW_READ); // чтение прямого бита
+        ow_buf[0] = owReadSlot(owEchoRead(ow));
+        owSend(ow, OW_READ); // чтение инверсного бита
+        ow_buf[1] = owReadSlot(owEchoRead(ow));
+
+        if (ow_buf[0] == WIRE_1) {
+          if (ow_buf[1] == WIRE_1) {
+            // две единицы, где-то провтыкали и заканчиваем поиск
+            return -1;
+          } else {
+            // 10 - на данном этапе только 1
+            currentSelection = 1;
+          }
+        } else {
+          if (ow_buf[1] == WIRE_1) {
+            // 01 - на данном этапе только 0
+            currentSelection = 0;
+          } else {
+            // 00 - коллизия
+            if (curBit < lastCollision) {
+              // идем по дереву, не дошли до развилки
+              if (lastDevice[(curBit - 1) >> 3]
+                  & 1 << ((curBit - 1) & 0x07)) {
+                // (curBit-1)>>3 - номер байта
+                // (curBit-1)&0x07 - номер бита в байте
+                currentSelection = 1;
+
+                // если пошли по правой ветке, запоминаем номер бита
+                if (currentCollision < curBit) {
+                  currentCollision = curBit;
+                }
+              } else {
+                currentSelection = 0;
+              }
+            } else {
+              if (curBit == lastCollision) {
+                currentSelection = 0;
+              } else {
+                // идем по правой ветке
+                currentSelection = 1;
+
+                // если пошли по правой ветке, запоминаем номер бита
+                if (currentCollision < curBit) {
+                  currentCollision = curBit;
+                }
+              }
+            }
+          }
+        }
+
+        if (currentSelection == 1)
+          curDevice[(curBit - 1) >> 3] |= 1 << ((curBit - 1) & 0x07);
+        uint8_t answerBit = (currentSelection == 0) ? WIRE_0 : WIRE_1;
+        owSend(ow, answerBit);
+      }
+      devices++;
+      lastDevice = curDevice;
+      curDevice = &ow->ids[devices].code;
+      if (currentCollision == 0)
+        return devices;
+      lastCollision = currentCollision;
+    } else
+      return 0; // на шине никого нет
+  }
+  return devices;
 }
 
 void owSkipRomCmd(OneWire *ow) {
-    owResetCmd(ow);
-    owSendByte(ow, ONEWIRE_SKIP_ROM);
+  owResetCmd(ow);
+  owSendByte(ow, ONEWIRE_SKIP_ROM);
 }
 
 void owMatchRomCmd(OneWire *ow, RomCode *rom) {
-    owResetCmd(ow);
-    owSendByte(ow, ONEWIRE_MATCH_ROM);
-    int i = 7;
-    for (; i >= 0; i--)
-        owSendByte(ow, *(((uint8_t *) rom) + i));
+  owResetCmd(ow);
+  owSendByte(ow, ONEWIRE_MATCH_ROM);
+  int i = 7;
+  for (; i >= 0; i--)
+    owSendByte(ow, *(((uint8_t *) rom) + i));
 }
 
 void owConvertTemperatureCmd(OneWire *ow, RomCode *rom) {
-    owMatchRomCmd(ow, rom);
-    owSendByte(ow, ONEWIRE_CONVERT_TEMPERATURE);
+  owMatchRomCmd(ow, rom);
+  owSendByte(ow, ONEWIRE_CONVERT_TEMPERATURE);
 }
 
 /**
@@ -330,40 +350,40 @@ void owConvertTemperatureCmd(OneWire *ow, RomCode *rom) {
  * @return data
  */
 uint8_t *owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data) {
-    uint16_t b = 0, p;
-    switch (rom->family) {
-        case DS18B20:
-        case DS18S20:
-            p = 72;
-            break;
-        default:
-            return data;
+  uint16_t b = 0, p;
+  switch (rom->family) {
+    case DS18B20:
+    case DS18S20:
+      p = 72;
+      break;
+    default:
+      return data;
 
-    }
-    owMatchRomCmd(ow, rom);
-    owSendByte(ow, ONEWIRE_READ_SCRATCHPAD);
-    while (b < p) {
-        uint8_t pos = (uint8_t) ((p - 8) / 8 - (b / 8));
-        owSend(ow, OW_READ);
-        uint8_t bt = owReadSlot(owEchoRead(ow));
+  }
+  owMatchRomCmd(ow, rom);
+  owSendByte(ow, ONEWIRE_READ_SCRATCHPAD);
+  while (b < p) {
+    uint8_t pos = (uint8_t) ((p - 8) / 8 - (b / 8));
+    owSend(ow, OW_READ);
+    uint8_t bt = owReadSlot(owEchoRead(ow));
 
-        if (bt == 1)
-            data[pos] |= 1 << b % 8;
-        else
-            data[pos] &= ~(1 << b % 8);
-        b++;
-    }
-    return data;
+    if (bt == 1)
+      data[pos] |= 1 << b % 8;
+    else
+      data[pos] &= ~(1 << b % 8);
+    b++;
+  }
+  return data;
 }
 
 void owWriteDS18B20Scratchpad(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl, uint8_t conf) {
-    if (rom->family != DS18B20)
-        return;
-    owMatchRomCmd(ow, rom);
-    owSendByte(ow, ONEWIRE_WRITE_SCRATCHPAD);
-    owSendByte(ow, th);
-    owSendByte(ow, tl);
-    owSendByte(ow, conf);
+  if (rom->family != DS18B20)
+    return;
+  owMatchRomCmd(ow, rom);
+  owSendByte(ow, ONEWIRE_WRITE_SCRATCHPAD);
+  owSendByte(ow, th);
+  owSendByte(ow, tl);
+  owSendByte(ow, conf);
 }
 
 /**
@@ -376,42 +396,42 @@ void owWriteDS18B20Scratchpad(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl,
  * @return struct with data
  */
 Temperature readTemperature(OneWire *ow, RomCode *rom, bool reSense) {
-    Temperature t;
-    t.inCelsus = 0x00;
-    t.frac = 0x00;
-    int8_t sign;
-    uint8_t pad[9];
-    Scratchpad_DS18B20 *sp = (Scratchpad_DS18B20 *)&pad;
-    Scratchpad_DS18S20 *spP = (Scratchpad_DS18S20 *)&pad;
-    switch (rom->family) {
-        case DS18B20:
-            owReadScratchpadCmd(ow, rom, pad);
-            sign = (int8_t) ((sp->temp_msb & 0xf8) == 0x00 ? 1 : -1);
-            t.inCelsus = sign * (((sp->temp_msb & 0x07) << 4) |
-                         ((sp->temp_lsb >> 4) & 0x0f));
-            t.frac = (uint8_t) ((((sp->temp_lsb & 0x0F)) * 10) >> 4);
-            break;
-        case DS18S20:
-            owReadScratchpadCmd(ow, rom, pad);
-            sign = (int8_t) ((spP->temp_msb & 0xff) == 0x00 ? 1 : -1);
-            t.inCelsus = sign * ((spP->temp_lsb >> 1) & 0x7f);
-            t.frac = (uint8_t) 5 * (spP->temp_lsb & 0x01);
-            break;
-        default:
-            return t;
-    }
-    if (reSense) {
-        owConvertTemperatureCmd(ow, rom);
-    }
-    return t;
+  Temperature t;
+  t.inCelsus = 0x00;
+  t.frac = 0x00;
+  int8_t sign;
+  uint8_t pad[9];
+  Scratchpad_DS18B20 *sp = (Scratchpad_DS18B20 *) &pad;
+  Scratchpad_DS18S20 *spP = (Scratchpad_DS18S20 *) &pad;
+  switch (rom->family) {
+    case DS18B20:
+      owReadScratchpadCmd(ow, rom, pad);
+      sign = (int8_t) ((sp->temp_msb & 0xf8) == 0x00 ? 1 : -1);
+      t.inCelsus = sign * (((sp->temp_msb & 0x07) << 4) |
+                           ((sp->temp_lsb >> 4) & 0x0f));
+      t.frac = (uint8_t) ((((sp->temp_lsb & 0x0F)) * 10) >> 4);
+      break;
+    case DS18S20:
+      owReadScratchpadCmd(ow, rom, pad);
+      sign = (int8_t) ((spP->temp_msb & 0xff) == 0x00 ? 1 : -1);
+      t.inCelsus = sign * ((spP->temp_lsb >> 1) & 0x7f);
+      t.frac = (uint8_t) 5 * (spP->temp_lsb & 0x01);
+      break;
+    default:
+      return t;
+  }
+  if (reSense) {
+    owConvertTemperatureCmd(ow, rom);
+  }
+  return t;
 }
 
 void owCopyScratchpadCmd(OneWire *ow, RomCode *rom) {
-    owMatchRomCmd(ow, rom);
-    owSendByte(ow, ONEWIRE_COPY_SCRATCHPAD);
+  owMatchRomCmd(ow, rom);
+  owSendByte(ow, ONEWIRE_COPY_SCRATCHPAD);
 }
 
 void owRecallE2Cmd(OneWire *ow, RomCode *rom) {
-    owMatchRomCmd(ow, rom);
-    owSendByte(ow, ONEWIRE_RECALL_E2);
+  owMatchRomCmd(ow, rom);
+  owSendByte(ow, ONEWIRE_RECALL_E2);
 }

@@ -1,3 +1,0 @@
-# Hashes of file build rules.
-412423b64a37daecd7bf51666f279fff CMakeFiles/libopencm3
-ba89a70d3b006b47c4ba1ecc8c29eaad src/CMakeFiles/stm32-DS18x20.bin

@@ -1,7 +1,0 @@
-/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/sl/projects/stm32-DS18B20/cmake-build-debug/CMakeFiles/libopencm3.dir
-/home/sl/projects/stm32-DS18B20/cmake-build-debug/src/CMakeFiles/edit_cache.dir
-/home/sl/projects/stm32-DS18B20/cmake-build-debug/src/CMakeFiles/rebuild_cache.dir
-/home/sl/projects/stm32-DS18B20/cmake-build-debug/src/CMakeFiles/stm32-DS18x20.bin.dir
-/home/sl/projects/stm32-DS18B20/cmake-build-debug/src/CMakeFiles/stm32-DS18x20.elf.dir

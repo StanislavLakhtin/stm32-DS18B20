@@ -69,6 +69,18 @@ void owInit(OneWire *ow) {
 
 }
 
+void owReadHandler(uint32_t usart) {
+  uint8_t index = getUsartIndex(usart);
+  /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+  if (((USART_CR1(usart) & USART_CR1_RXNEIE) != 0) &&
+      ((USART_SR(usart) & USART_SR_RXNE) != 0)) {
+
+    /* Получаем данные из периферии и сбрасываем флаг*/
+    rc_buffer[index] = usart_recv_blocking(usart);
+    recvFlag &= ~(1 << index);
+  }
+}
+
 /** Реализация RESET на шине 1wire
  *
  * @param usart -- выбранный для реализации 1wire usart
@@ -113,7 +125,8 @@ uint8_t owReadSlot(uint16_t data) {
 
 uint16_t owEchoRead(OneWire *ow) {
   uint8_t i = getUsartIndex(ow->usart);
-  while (recvFlag & (1 << i));
+  //uint16_t pause = 1000;
+  while (recvFlag & (1 << i) );
   return rc_buffer[i];
 }
 
@@ -223,7 +236,6 @@ int owSearchCmd(OneWire *ow) {
           *(readBuffer) |= 1 << bC % 8;
         uint8_t answerBit = (sB == 0) ? WIRE_0 : WIRE_1;
         owSend(ow, answerBit);
-        //*(((uint8_t *) &ow->ids[devNum]) + 7 - bC) = readBuffer;
         bC++;
       }
       uint8_t crcCheck = 0x00;
@@ -236,91 +248,6 @@ int owSearchCmd(OneWire *ow) {
   return devNum;
 }
 
-int owScanCmd(OneWire *ow) {
-
-  owInit(ow);
-  uint8_t devices = 0;
-  uint8_t *lastDevice;
-  uint8_t *curDevice = &ow->ids[0].code;
-  uint8_t curBit, lastCollision, currentCollision, currentSelection;
-  uint8_t ow_buf[2];
-
-  lastCollision = 0;
-  while (devices < MAXDEVICES_ON_THE_BUS) {
-    curBit = 1;
-    currentCollision = 0;
-    if (owResetCmd(ow) != ONEWIRE_NOBODY) {
-      // посылаем команду на поиск устройств
-      owSendByte(ow, ONEWIRE_SEARCH);
-
-      for (; curBit <= 64; curBit++) {
-        // читаем два бита. Основной и комплементарный
-        owSend(ow, OW_READ); // чтение прямого бита
-        ow_buf[0] = owReadSlot(owEchoRead(ow));
-        owSend(ow, OW_READ); // чтение инверсного бита
-        ow_buf[1] = owReadSlot(owEchoRead(ow));
-
-        if (ow_buf[0] == WIRE_1) {
-          if (ow_buf[1] == WIRE_1) {
-            // две единицы, где-то провтыкали и заканчиваем поиск
-            return -1;
-          } else {
-            // 10 - на данном этапе только 1
-            currentSelection = 1;
-          }
-        } else {
-          if (ow_buf[1] == WIRE_1) {
-            // 01 - на данном этапе только 0
-            currentSelection = 0;
-          } else {
-            // 00 - коллизия
-            if (curBit < lastCollision) {
-              // идем по дереву, не дошли до развилки
-              if (lastDevice[(curBit - 1) >> 3]
-                  & 1 << ((curBit - 1) & 0x07)) {
-                // (curBit-1)>>3 - номер байта
-                // (curBit-1)&0x07 - номер бита в байте
-                currentSelection = 1;
-
-                // если пошли по правой ветке, запоминаем номер бита
-                if (currentCollision < curBit) {
-                  currentCollision = curBit;
-                }
-              } else {
-                currentSelection = 0;
-              }
-            } else {
-              if (curBit == lastCollision) {
-                currentSelection = 0;
-              } else {
-                // идем по правой ветке
-                currentSelection = 1;
-
-                // если пошли по правой ветке, запоминаем номер бита
-                if (currentCollision < curBit) {
-                  currentCollision = curBit;
-                }
-              }
-            }
-          }
-        }
-
-        if (currentSelection == 1)
-          curDevice[(curBit - 1) >> 3] |= 1 << ((curBit - 1) & 0x07);
-        uint8_t answerBit = (currentSelection == 0) ? WIRE_0 : WIRE_1;
-        owSend(ow, answerBit);
-      }
-      devices++;
-      lastDevice = curDevice;
-      curDevice = &ow->ids[devices].code;
-      if (currentCollision == 0)
-        return devices;
-      lastCollision = currentCollision;
-    } else
-      return 0; // на шине никого нет
-  }
-  return devices;
-}
 
 void owSkipRomCmd(OneWire *ow) {
   owResetCmd(ow);

@@ -36,7 +36,7 @@
 #define DS18B20 0x28
 #define DS18S20 0x10
 
-#define WIRE_0    0x00
+#define WIRE_0    0x00 // 0x00 --default
 #define WIRE_1    0xff
 #define OW_READ   0xff
 
@@ -44,40 +44,40 @@ volatile uint8_t recvFlag;
 volatile uint16_t rc_buffer[5];
 
 typedef struct {
-    int16_t inCelsus;
-    uint8_t frac;
+  int16_t inCelsus;
+  uint8_t frac;
 } Temperature;
 
 typedef struct {
-    uint8_t crc;
-    uint8_t code[6];
-    uint8_t family;
+  uint8_t crc;
+  uint8_t code[6];
+  uint8_t family;
 } RomCode;
 
 typedef struct {
-    uint8_t crc;
-    uint8_t reserved[3];
-    uint8_t configuration;
-    uint8_t tl;
-    uint8_t th;
-    uint8_t temp_msb;
-    uint8_t temp_lsb;
+  uint8_t crc;
+  uint8_t reserved[3];
+  uint8_t configuration;
+  uint8_t tl;
+  uint8_t th;
+  uint8_t temp_msb;
+  uint8_t temp_lsb;
 } Scratchpad_DS18B20;
 
 typedef struct {
-    uint8_t crc;
-    uint8_t count_per;
-    uint8_t count_remain;
-    uint8_t reserved[2];
-    uint8_t tl;
-    uint8_t th;
-    uint8_t temp_msb;
-    uint8_t temp_lsb;
+  uint8_t crc;
+  uint8_t count_per;
+  uint8_t count_remain;
+  uint8_t reserved[2];
+  uint8_t tl;
+  uint8_t th;
+  uint8_t temp_msb;
+  uint8_t temp_lsb;
 } Scratchpad_DS18S20;
 
 typedef struct {
-    uint32_t usart;
-    RomCode ids[MAXDEVICES_ON_THE_BUS];
+  uint32_t usart;
+  RomCode ids[MAXDEVICES_ON_THE_BUS];
 } OneWire;
 
 void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART
@@ -87,8 +87,6 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
 uint16_t owResetCmd(OneWire *ow);
 
 int owSearchCmd(OneWire *ow);
-
-int owScanCmd(OneWire *ow);
 
 void owSkipRomCmd(OneWire *ow);
 
@@ -112,65 +110,8 @@ void owSendByte(OneWire *ow, uint8_t data);
 
 uint16_t owEchoRead(OneWire *ow);
 
-#ifdef ONEWIRE_UART5
-void usart3_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(UART5) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(UART5) & USART_SR_RXNE) != 0)) {
+void owReadHandler(uint32_t usart);
 
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[4] = usart_recv_blocking(UART5);
-        recvFlag &= ~(1 << 4);
-    }
-}
-#endif
-#ifdef ONEWIRE_UART4
-void uart4_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(UART4) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(UART4) & USART_SR_RXNE) != 0)) {
 
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[3] = usart_recv_blocking(UART4);
-        recvFlag &= ~(1 << 3);
-    }
-}
-#endif
-#ifdef ONEWIRE_USART3
-/*void usart3_isr(void) {
-  *//* Проверяем, что мы вызвали прерывание из-за RXNE. *//*
-  if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
-      ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
-
-    *//* Получаем данные из периферии и сбрасываем флаг*//*
-    rc_buffer[2] = usart_recv(USART3);
-    recvFlag &= ~(1 << 2);
-  }
-}*/
-#endif
-#ifdef ONEWIRE_USART2
-void usart2_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(USART2) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART2) & USART_SR_RXNE) != 0)) {
-
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[1] = usart_recv_blocking(USART3);
-        recvFlag &= ~(1 << 1);
-    }
-}
-#endif
-#ifdef ONEWIRE_USART1
-void usart1_isr(void) {
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
-    if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
-        ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
-
-        /* Получаем данные из периферии и сбрасываем флаг*/
-        rc_buffer[0] = usart_recv_blocking(USART3);
-        recvFlag &= ~1;
-    }
-}
-#endif
 
 #endif //STM32_DS18X20_ONEWIRE_H

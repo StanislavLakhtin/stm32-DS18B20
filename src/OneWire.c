@@ -125,8 +125,8 @@ uint8_t owReadSlot(uint16_t data) {
 
 uint16_t owEchoRead(OneWire *ow) {
   uint8_t i = getUsartIndex(ow->usart);
-  //uint16_t pause = 1000;
-  while (recvFlag & (1 << i) );
+  uint16_t pause = 1000;
+  while (recvFlag & (1 << i) && pause--);
   return rc_buffer[i];
 }
 
@@ -181,6 +181,8 @@ int8_t owCRC(uint8_t crc, uint8_t b) {
   return crc;
 }
 
+
+
 /**
  * Method for SEARCH any devices on the bus and put it on the ow->ids
  * If MAXDEVICE_ON_THE_BUS smaller then count of real devices
@@ -188,12 +190,11 @@ int8_t owCRC(uint8_t crc, uint8_t b) {
  */
 int owSearchCmd(OneWire *ow) {
   uint8_t devNum = 0;
-  int forkBite = -1, lastFork = -1;
-  bool oneMoreDevice = false;
-  uint8_t *readBuffer; // Здесь будет накапливаться побитно ROM ID очередного устройства
+  uint8_t i32ConflictBitNumber = 65;
+  uint8_t *current; // Здесь будет накапливаться побитно ROM ID очередного устройства
   //очищаем все ранее найденные устройства
   owInit(ow);
-
+  uint8_t *prev, oneMore = 1;
   do {
     if (owResetCmd(ow) != ONEWIRE_NOBODY) {
       // посылка команды ОЧЕРЕДНОГО устройства на поиск
@@ -202,50 +203,50 @@ int owSearchCmd(OneWire *ow) {
       // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
       // будут найдены столько, сколько было определено MAXDEVICES_ON_THE_BUS
       // стараемся загрузить 64 бит [FAMILY CODE(1B)][ROM CODE(6B)][CRC(1B)] (ОБРАТНЫЙ ПОРЯОК БИТ)
-      int bC = 0;
-      while (bC < 64) {
-        readBuffer = ((uint8_t *) (&ow->ids[devNum]) + 7 - bC / 8);
-        // в соответствии с логикой читаем бит посылая два цикла чтения
-        // если пришёл конфликтный бит, то принимаем всегда за ноль и продолжаем опрос
-        uint8_t cB, cB_inverse, sB;
+      uint8_t ui32BitNumber = 0;
+      while (ui32BitNumber < 64) {
+        prev = current;
+        current = ((uint8_t *) (&ow->ids[devNum]) + 7 - ui32BitNumber / 8);
+        uint8_t cB, cmp_cB, searchDirection;
         owSend(ow, OW_READ); // чтение прямого бита
         cB = owReadSlot(owEchoRead(ow));
         owSend(ow, OW_READ); // чтение инверсного бита
-        cB_inverse = owReadSlot(owEchoRead(ow));
-        if ((cB == cB_inverse)) {
-          if (cB == 1) {
-            // авария. не может быть две единицы. прерываемся c кодом аварии
-            return -1;
+        cmp_cB = owReadSlot(owEchoRead(ow));
+        if (cB == 1 && cmp_cB == 1)
+          return -1;
+        else if (cB != cmp_cB)
+          searchDirection = cB;
+        else if (ui32BitNumber == i32ConflictBitNumber) {
+          searchDirection = 1; oneMore = 0;
+        }
+        else if (ui32BitNumber < i32ConflictBitNumber) {
+          if ((*prev << ui32BitNumber % 8) & 0x01) {
+            searchDirection = 1;
           } else {
-            // был конфликт -- биты НЕ совпали у нескольких устройств
-            // в этм месте УЖЕ произошёл fork
-            sB = (forkBite < bC) ? 0 : 1; // мы находимся в режиме разрешения предыдущего конфликта или в новом?
-            if (sB == 0) {
-              forkBite = bC;
-              oneMoreDevice = true;
-            } else {
-              oneMoreDevice = false;
-            }
+            searchDirection = 0;
+            i32ConflictBitNumber = ui32BitNumber; oneMore = 1;
           }
         } else {
-          // если прямой и инверсный биты разные, то всё ок. Просто запоминаем, что пришло
-          sB = cB;
+          searchDirection = *prev << ui32BitNumber % 8;
         }
         // сохраняем бит
-        if (sB == 1)
-          *(readBuffer) |= 1 << bC % 8;
-        uint8_t answerBit = (sB == 0) ? WIRE_0 : WIRE_1;
+        if (searchDirection == 1)
+          *(current) |= 1 << ui32BitNumber % 8;
+        uint8_t answerBit = (searchDirection == 0) ? WIRE_0 : WIRE_1;
         owSend(ow, answerBit);
-        bC++;
+        ui32BitNumber++;
       }
       uint8_t crcCheck = 0x00;
       int i = 7;
-      for (; i > 0; i--)
-        crcCheck = owCRC(crcCheck, *(((uint8_t *) &ow->ids[devNum]) + i)); //todo что делать, если не получился 0?
+      for (; i > 0; i--) {
+        crcCheck = owCRC(crcCheck, *(((uint8_t *) &ow->ids[devNum]) + i));
+        //todo что делать, если не получился 0?
+      }
       devNum++;
     }
-  } while (devNum < MAXDEVICES_ON_THE_BUS && oneMoreDevice);
-  return devNum;
+  } while (devNum < MAXDEVICES_ON_THE_BUS & oneMore);
+  return
+      devNum;
 }
 
 

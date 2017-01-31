@@ -22,7 +22,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall ${STM32F1_FLAGS} -std=c99 -Os -ffuncti
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall --std=c++14 ${STM32F1_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_SOURCE_DIR}/libopencm3.ld -nostartfiles -lopencm3_stm32f1 -lc -lnosys --specs=rdimon.specs --specs=nano.specs -Wl,--gc-sections")
 
-
 function(add_bin_from_elf bin elf)
     add_custom_target(${bin}
             ALL ${CMAKE_OBJCOPY}

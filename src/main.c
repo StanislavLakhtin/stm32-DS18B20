@@ -1,5 +1,6 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/f1/nvic.h>
 #include <stdio.h>
 #include <errno.h>
 
@@ -34,6 +35,10 @@ static void clock_setup(void) {
 #ifdef ONEWIRE_USART3
     rcc_periph_clock_enable(RCC_USART3);
 #endif
+}
+
+void usart3_isr(){
+  owReadHandler(USART3);
 }
 
 int _write(int file, char *ptr, int len) {
@@ -85,12 +90,12 @@ int main(void) {
     ow.usart = USART3;
 
     bool readWrite = true;
-    uint32_t pDelay, i;
+    uint32_t pDelay = 300, i;
 
     while (1) {
         if (owResetCmd(&ow) != ONEWIRE_NOBODY) {    // is anybody on the bus?
-            owSearchCmd(&ow);                       // take them romId's
-            for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
+            uint8_t devices = owSearchCmd(&ow);                       // take them romId's
+            for (i = 0; i < devices; i++) {
                 RomCode *r = &ow.ids[i];
                 Temperature t;
                 switch (r->family) {
@@ -114,10 +119,11 @@ int main(void) {
                 pDelay = 1200000;
             }
         } else {
+            printf("there is no device on the bus");
             pDelay = 8000000;
         }
         //do something while sensor calculate
-        int k = 10;
+        int k = 80;
         while (k > 0) {
             gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
             for (i = 0; i < pDelay; i++)    /* Wait a bit. */

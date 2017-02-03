@@ -32,9 +32,7 @@ static void clock_setup(void) {
 
     /* Enable clocks for USARTs. */
     rcc_periph_clock_enable(RCC_USART2); //включить, если используется отладка
-#ifdef ONEWIRE_USART3
     rcc_periph_clock_enable(RCC_USART3);
-#endif
 }
 
 void usart3_isr(){
@@ -94,25 +92,28 @@ int main(void) {
 
     while (1) {
         if (owResetCmd(&ow) != ONEWIRE_NOBODY) {    // is anybody on the bus?
-            uint8_t devices = owSearchCmd(&ow);                       // take them romId's
-            for (i = 0; i < devices; i++) {
+            int devices = owSearchCmd(&ow);                       // take them romId's
+            printf("\nfound %d devices on 1-wire bus", devices);
+            if (devices <1)
+                continue;
+            i=0;
+            for (; i < devices; i++) {
                 RomCode *r = &ow.ids[i];
                 Temperature t;
+                printf("\ndevice %d (SN: %X/%X%X%X%X%X%X/%X)", i, r->family, r->code[0], r->code[1], r->code[2], r->code[3], r->code[4], r->code[5], r->crc);
                 switch (r->family) {
                     case DS18B20:
                         t = readTemperature(&ow, &ow.ids[i], true); //it will return PREVIOUS value and will send new measure command
-                        printf("DS18B20 (SN: %x%x%x%x%x%x), Temp: %3d.%d \n", r->code[0], r->code[1], r->code[2],
-                               r->code[3], r->code[4], r->code[5], t.inCelsus, t.frac);
+                        printf("\nDS18B20 , Temp: %3d.%dC", t.inCelsus, t.frac);
                         break;
                     case DS18S20:
                         t = readTemperature(&ow, &ow.ids[i], true);
-                        printf("DS18S20 (SN: %x%x%x%x%x%x), Temp: %3d.%d \n", r->code[0], r->code[1], r->code[2],
-                               r->code[3], r->code[4], r->code[5], t.inCelsus, t.frac);
+                        printf("\nDS18S20 , Temp: %3d.%dC", t.inCelsus, t.frac);
                         break;
                     case 0x00:
                         break;
                     default:
-                        printf("UNKNOWN Family:%x (SN: %x%x%x%x%x%x)\n", r->family, r->code[0], r->code[1], r->code[2],
+                        printf("\nUNKNOWN Family:%x (SN: %x%x%x%x%x%x)", r->family, r->code[0], r->code[1], r->code[2],
                                r->code[3], r->code[4], r->code[5]);
                         break;
                 }
@@ -123,13 +124,9 @@ int main(void) {
             pDelay = 8000000;
         }
         //do something while sensor calculate
-        int k = 80;
-        while (k > 0) {
-            gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
-            for (i = 0; i < pDelay; i++)    /* Wait a bit. */
-                    __asm__("nop");
-            k--;
-        }
+        gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
+        for (i = 0; i < pDelay*4; i++)    /* Wait a bit. */
+           __asm__("nop");
         readWrite = !readWrite;
     }
 

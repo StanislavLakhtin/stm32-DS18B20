@@ -78,6 +78,8 @@ typedef struct {
 typedef struct {
   uint32_t usart;
   RomCode ids[MAXDEVICES_ON_THE_BUS];
+  int lastDiscrepancy;
+  uint8_t lastROM[8];
 } OneWire;
 
 void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART

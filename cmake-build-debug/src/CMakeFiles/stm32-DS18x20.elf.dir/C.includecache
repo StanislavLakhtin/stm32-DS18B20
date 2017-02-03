@@ -475,6 +475,10 @@ libopencm3/cm3/nvic.h
 /home/sl/projects/stm32-DS18B20/src/OneWire.c
 OneWire.h
 /home/sl/projects/stm32-DS18B20/src/OneWire.h
+stdio.h
+-
+errno.h
+-
 
 /home/sl/projects/stm32-DS18B20/src/OneWire.h
 libopencm3/stm32/rcc.h

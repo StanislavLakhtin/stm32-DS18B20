@@ -1,4 +1,6 @@
 #include "OneWire.h"
+#include <stdio.h>
+#include <errno.h>
 
 /**
     @author Stanislav Lakhtin
@@ -59,13 +61,16 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
 }
 
 void owInit(OneWire *ow) {
-  int i, k = 0;
+  int i, k = 0, kk = 0;
   for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
     ow->ids[i].crc = 0x00;
     ow->ids[i].family = 0x00;
-    for (k = 0; k < 6; k++)
-      ow->ids[k].code[k] = 0x00;
+    for (; k < 6; k++)
+      ow->ids[i].code[k] = 0x00;
+    for (; kk < 8; kk++)
+      ow->lastROM[kk] = 0x00;
   }
+  ow->lastDiscrepancy = 64;
 
 }
 
@@ -181,74 +186,77 @@ int8_t owCRC(uint8_t crc, uint8_t b) {
   return crc;
 }
 
-
-
-/**
- * Method for SEARCH any devices on the bus and put it on the ow->ids
- * If MAXDEVICE_ON_THE_BUS smaller then count of real devices
- * @param ow -- OneWire pointer
+/*
+ * return 1 if has got one more address
+ * return 0 if hasn't
+ * return -1 if error reading happened
+ * return -2 if crc error happened
+ *
+ * переделать на функции обратного вызова для реакции на ошибки
  */
-int owSearchCmd(OneWire *ow) {
-  uint8_t devNum = 0;
-  uint8_t i32ConflictBitNumber = 65;
-  uint8_t *current; // Здесь будет накапливаться побитно ROM ID очередного устройства
-  //очищаем все ранее найденные устройства
-  owInit(ow);
-  uint8_t *prev, oneMore = 1;
-  do {
-    if (owResetCmd(ow) != ONEWIRE_NOBODY) {
-      // посылка команды ОЧЕРЕДНОГО устройства на поиск
-      owSendByte(ow, ONEWIRE_SEARCH);
-      // будем двигаться от МЛАДШЕГО БИТА К СТАРШЕМУ до тех пор, пока не достигнем старшего или пока не достигнем
-      // максимально-возможного количества устройств. Если устройств больше, то в соответствии с логикой работы
-      // будут найдены столько, сколько было определено MAXDEVICES_ON_THE_BUS
-      // стараемся загрузить 64 бит [FAMILY CODE(1B)][ROM CODE(6B)][CRC(1B)] (ОБРАТНЫЙ ПОРЯОК БИТ)
-      uint8_t ui32BitNumber = 0;
-      while (ui32BitNumber < 64) {
-        prev = current;
-        current = ((uint8_t *) (&ow->ids[devNum]) + 7 - ui32BitNumber / 8);
-        uint8_t cB, cmp_cB, searchDirection;
-        owSend(ow, OW_READ); // чтение прямого бита
-        cB = owReadSlot(owEchoRead(ow));
-        owSend(ow, OW_READ); // чтение инверсного бита
-        cmp_cB = owReadSlot(owEchoRead(ow));
-        if (cB == 1 && cmp_cB == 1)
-          return -1;
-        else if (cB != cmp_cB)
-          searchDirection = cB;
-        else if (ui32BitNumber == i32ConflictBitNumber) {
-          searchDirection = 1; oneMore = 0;
-        }
-        else if (ui32BitNumber < i32ConflictBitNumber) {
-          if ((*prev << ui32BitNumber % 8) & 0x01) {
-            searchDirection = 1;
-          } else {
-            searchDirection = 0;
-            i32ConflictBitNumber = ui32BitNumber; oneMore = 1;
-          }
-        } else {
-          searchDirection = *prev << ui32BitNumber % 8;
-        }
-        // сохраняем бит
-        if (searchDirection == 1)
-          *(current) |= 1 << ui32BitNumber % 8;
-        uint8_t answerBit = (searchDirection == 0) ? WIRE_0 : WIRE_1;
-        owSend(ow, answerBit);
-        ui32BitNumber++;
+int hasNextRom(OneWire *ow, uint8_t *ROM) {
+  if (owResetCmd(ow) == ONEWIRE_NOBODY) {
+    return 0;
+  }
+
+  owSendByte(ow, ONEWIRE_SEARCH);
+  uint8_t ui32BitNumber = 0;
+  int resolved = -1;
+  while (ui32BitNumber < 64) {
+    int byteNum = 7 - ui32BitNumber / 8;
+    uint8_t *current = ((uint8_t *) (ROM) + byteNum);
+    uint8_t cB, cmp_cB, searchDirection=0;
+    owSend(ow, OW_READ); // чтение прямого бита
+    cB = owReadSlot(owEchoRead(ow));
+    owSend(ow, OW_READ); // чтение инверсного бита
+    cmp_cB = owReadSlot(owEchoRead(ow));
+    if (cB == cmp_cB && cB == 1)
+      return -1;
+    else if (cB != cmp_cB)
+      searchDirection = cB;
+    else if (ui32BitNumber >= ow->lastDiscrepancy ) {
+      if (ui32BitNumber > ow->lastDiscrepancy) {
+        searchDirection = 0;
+      } else {
+        searchDirection = ow->lastROM[byteNum] >> ui32BitNumber % 8;
       }
-      uint8_t crcCheck = 0x00;
-      int i = 7;
-      for (; i > 0; i--) {
-        crcCheck = owCRC(crcCheck, *(((uint8_t *) &ow->ids[devNum]) + i));
-        //todo что делать, если не получился 0?
+      if (ui32BitNumber == ow->lastDiscrepancy)
+        searchDirection = 1;
+      if (!searchDirection) {
+        resolved = ui32BitNumber;
       }
-      devNum++;
     }
-  } while (devNum < MAXDEVICES_ON_THE_BUS & oneMore);
-  return
-      devNum;
+    // сохраняем бит
+    if (searchDirection)
+      *(current) |= 1 << ui32BitNumber % 8;
+    uint8_t answerBit = (searchDirection == 0) ? WIRE_0 : WIRE_1;
+    owSend(ow, answerBit);
+    ui32BitNumber++;
+  }
+  ow->lastDiscrepancy = resolved;
+  printf("\n  ROM: %d -- %d", ow->lastDiscrepancy, resolved);
+  uint8_t crcCheck = 0x00;
+  int i = 7;
+  for (; i > 0; i--) {
+    crcCheck = owCRC(crcCheck, *(((uint8_t *) ROM[i]) + i)); //todo что делать, если не получился 0?
+  }
+  i = 7;
+  for (; i >= 0; i--)
+    ow->lastROM[i] = ROM[i];
+  return ow->lastDiscrepancy < 0;
 }
 
+int owSearchCmd(OneWire *ow) {
+  int device = 0, nextROM;
+  owInit(ow);
+  do {
+    nextROM = hasNextRom(ow, &ow->ids[device]);
+    if (nextROM) {
+      device++;
+    }
+  } while (nextROM && device < MAXDEVICES_ON_THE_BUS);
+  return device;
+}
 
 void owSkipRomCmd(OneWire *ow) {
   owResetCmd(ow);

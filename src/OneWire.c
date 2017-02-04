@@ -1,6 +1,5 @@
 #include "OneWire.h"
 #include <stdio.h>
-#include <errno.h>
 
 /**
     @author Stanislav Lakhtin
@@ -8,11 +7,15 @@
     @brief  Реализация протокола 1wire на базе библиотеки libopencm3 для микроконтроллера STM32F103
 
             Возможно, библиотека будет корректно работать и на других uK (требуется проверка).
+            Проверка необходима, чтобы убедиться в корректности настройки UART/USART для работы
+            в полудуплексном режиме
             Общая идея заключается в использовании аппаратного USART uK для иммитации работы 1wire.
 
             Подключение устройств осуществляется на выбранный USART к TX пину, который должен быть подтянут к линии питания сопротивлением 4.7К.
             Реализация библиотеки осуществляет замыкание RX на TX внутри uK, оставляя ножку RX доступной для использования в других задачах.
 
+            Реализация библиотеки предполагает возможную одновременную работу как с независимыми шинами сразу со всеми
+            возможными UART/USART в микроконтроллере. При этом все шины (до 5 штук) будут адресоваться и опрашиваться индивидуально
  */
 
 /// Метод реализует переключение работы USART в half-duplex режим. Метод не работает для 1wire реализации
@@ -177,12 +180,31 @@ uint8_t bitsToByte(uint8_t *bits) {
   return target_byte;
 }
 
-int8_t owCRC(uint8_t crc, uint8_t b) {
+uint8_t owCRC(uint8_t crc, uint8_t b) {
   uint8_t p;
   for (p = 8; p; p--) {
-    crc = ((crc ^ b) & 1) ? (crc >> 1) ^ 0b10001100 : (crc >> 1);
+    crc = (uint8_t) (((crc ^ b) & 1) ? (crc >> 1) ^ 0b10001100 : (crc >> 1));
     b >>= 1;
   }
+  return crc;
+}
+
+/* Подсчет CRC8 массива mas длиной Len */
+uint8_t owCRC8( uint8_t *mas, uint8_t Len )
+{
+  uint8_t i,dat,crc,fb,st_byt;
+  st_byt=0; crc=0;
+  do{
+    dat=mas[st_byt];
+    for( i=0; i<8; i++) {  // счетчик битов в байте
+      fb = crc ^ dat;
+      fb &= 1;
+      crc >>= 1;
+      dat >>= 1;
+      if( fb == 1 ) crc ^= 0x8c; // полином
+    }
+    st_byt++;
+  } while( st_byt < Len ); // счетчик байтов в массиве
   return crc;
 }
 
@@ -201,10 +223,10 @@ int hasNextRom(OneWire *ow, uint8_t *ROM) {
 
   owSendByte(ow, ONEWIRE_SEARCH);
   uint8_t ui32BitNumber = 0;
-  int resolved = -1;
-  while (ui32BitNumber < 64) {
-    int byteNum = 7 - ui32BitNumber / 8;
-    uint8_t *current = ((uint8_t *) (ROM) + byteNum);
+  int zeroFork = -1;
+  do {
+    int byteNum = ui32BitNumber / 8;
+    uint8_t *current = (ROM) + byteNum;
     uint8_t cB, cmp_cB, searchDirection=0;
     owSend(ow, OW_READ); // чтение прямого бита
     cB = owReadSlot(owEchoRead(ow));
@@ -212,38 +234,35 @@ int hasNextRom(OneWire *ow, uint8_t *ROM) {
     cmp_cB = owReadSlot(owEchoRead(ow));
     if (cB == cmp_cB && cB == 1)
       return -1;
-    else if (cB != cmp_cB)
+    if (cB != cmp_cB) {
       searchDirection = cB;
-    else if (ui32BitNumber >= ow->lastDiscrepancy ) {
-      if (ui32BitNumber > ow->lastDiscrepancy) {
-        searchDirection = 0;
-      } else {
-        searchDirection = ow->lastROM[byteNum] >> ui32BitNumber % 8;
-      }
+    } else {
       if (ui32BitNumber == ow->lastDiscrepancy)
         searchDirection = 1;
-      if (!searchDirection) {
-        resolved = ui32BitNumber;
+      else {
+        if (ui32BitNumber > ow->lastDiscrepancy) {
+          searchDirection = 0;
+        } else {
+          searchDirection = (uint8_t) ((ow->lastROM[byteNum] >> ui32BitNumber % 8) & 0x01);
+        }
+        if (searchDirection == 0)
+          zeroFork = ui32BitNumber;
       }
     }
     // сохраняем бит
     if (searchDirection)
       *(current) |= 1 << ui32BitNumber % 8;
-    uint8_t answerBit = (searchDirection == 0) ? WIRE_0 : WIRE_1;
+    uint8_t answerBit = (uint8_t) ((searchDirection == 0) ? WIRE_0 : WIRE_1);
     owSend(ow, answerBit);
     ui32BitNumber++;
-  }
-  ow->lastDiscrepancy = resolved;
-  printf("\n  ROM: %d -- %d", ow->lastDiscrepancy, resolved);
-  uint8_t crcCheck = 0x00;
-  int i = 7;
-  for (; i > 0; i--) {
-    crcCheck = owCRC(crcCheck, *(((uint8_t *) ROM[i]) + i)); //todo что делать, если не получился 0?
-  }
-  i = 7;
-  for (; i >= 0; i--)
+  } while (ui32BitNumber < 64);
+  ow->lastDiscrepancy = zeroFork;
+  uint8_t crcCheck = owCRC8(ROM, 7);
+  printf("\n CRC %02X, received: %02X", crcCheck, ROM[7]);
+  uint8_t i = 0;
+  for (; i <7; i++)
     ow->lastROM[i] = ROM[i];
-  return ow->lastDiscrepancy < 0;
+  return ow->lastDiscrepancy > 0;
 }
 
 int owSearchCmd(OneWire *ow) {
@@ -251,9 +270,7 @@ int owSearchCmd(OneWire *ow) {
   owInit(ow);
   do {
     nextROM = hasNextRom(ow, &ow->ids[device]);
-    if (nextROM) {
-      device++;
-    }
+    device++;
   } while (nextROM && device < MAXDEVICES_ON_THE_BUS);
   return device;
 }
@@ -266,8 +283,8 @@ void owSkipRomCmd(OneWire *ow) {
 void owMatchRomCmd(OneWire *ow, RomCode *rom) {
   owResetCmd(ow);
   owSendByte(ow, ONEWIRE_MATCH_ROM);
-  int i = 7;
-  for (; i >= 0; i--)
+  int i = 0;
+  for (; i < 8; i++)
     owSendByte(ow, *(((uint8_t *) rom) + i));
 }
 

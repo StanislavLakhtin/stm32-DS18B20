@@ -49,9 +49,9 @@ typedef struct {
 } Temperature;
 
 typedef struct {
-  uint8_t crc;
-  uint8_t code[6];
   uint8_t family;
+  uint8_t code[6];
+  uint8_t crc;
 } RomCode;
 
 typedef struct {

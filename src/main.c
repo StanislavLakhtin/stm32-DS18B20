@@ -100,7 +100,7 @@ int main(void) {
             for (; i < devices; i++) {
                 RomCode *r = &ow.ids[i];
                 Temperature t;
-                printf("\ndevice %d (SN: %X/%X%X%X%X%X%X/%X)", i, r->family, r->code[0], r->code[1], r->code[2], r->code[3], r->code[4], r->code[5], r->crc);
+                printf("\ndevice %d (SN: %02X/%02X%02X%02X%02X%02X%02X/%02X)", i, r->family, r->code[0], r->code[1], r->code[2], r->code[3], r->code[4], r->code[5], r->crc);
                 switch (r->family) {
                     case DS18B20:
                         t = readTemperature(&ow, &ow.ids[i], true); //it will return PREVIOUS value and will send new measure command
@@ -117,7 +117,7 @@ int main(void) {
                                r->code[3], r->code[4], r->code[5]);
                         break;
                 }
-                pDelay = 1200000;
+                pDelay = 8000000;
             }
         } else {
             printf("there is no device on the bus");

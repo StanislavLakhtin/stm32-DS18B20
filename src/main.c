@@ -87,7 +87,6 @@ int main(void) {
 
   ow.usart = USART3;
 
-  bool readWrite = true;
   uint32_t pDelay = 300, i;
 
   while (1) {
@@ -103,7 +102,7 @@ int main(void) {
       }
       printf("\n\rfound %d devices on 1-wire bus", devices);
       if (devices < 1)
-        continue;
+        continue; // внезапно что-то могло "оторваться" из датчиков
       i = 0;
       for (; i < devices; i++) {
         RomCode *r = &ow.ids[i];
@@ -139,7 +138,6 @@ int main(void) {
     gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
     for (i = 0; i < pDelay * 4; i++)    /* Wait a bit. */
         __asm__("nop");
-    readWrite = !readWrite;
   }
 
   return 0;

@@ -94,14 +94,14 @@ int main(void) {
     if (owResetCmd(&ow) != ONEWIRE_NOBODY) {    // is anybody on the bus?
       int devices = owSearchCmd(&ow);           // получить ROMid всех устройст на шине или вернуть код ошибки
       if (devices <= 0) {
-        printf("\nError has happened!");
+        printf("\n\rError has happened!");
         pDelay = 8000000;
         gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
         for (i = 0; i < pDelay * 4; i++)    /* Wait a bit. */
             __asm__("nop");
         continue;
       }
-      printf("\nfound %d devices on 1-wire bus", devices);
+      printf("\n\rfound %d devices on 1-wire bus", devices);
       if (devices < 1)
         continue;
       i = 0;
@@ -109,29 +109,29 @@ int main(void) {
         RomCode *r = &ow.ids[i];
         Temperature t;
         char *crcOK = (owCRC8(r)==r->crc)?"CRC OK":"CRC ERROR!";
-        printf("\ndevice %d (SN: %02X/%02X%02X%02X%02X%02X%02X/%02X) ", i, r->family, r->code[5], r->code[4], r->code[3],
+        printf("\n\rdevice %d (SN: %02X/%02X%02X%02X%02X%02X%02X/%02X) ", i, r->family, r->code[5], r->code[4], r->code[3],
                r->code[2], r->code[1], r->code[0], r->crc);
         printf(crcOK);
         switch (r->family) {
           case DS18B20:
             // будет возвращено значение предыдущего измерения!
             t = readTemperature(&ow, &ow.ids[i], true);
-            printf("\nDS18B20 , Temp: %3d.%dC", t.inCelsus, t.frac);
+            printf("\n\rDS18B20 , Temp: %3d.%dC", t.inCelsus, t.frac);
             break;
           case DS18S20:
             t = readTemperature(&ow, &ow.ids[i], true);
-            printf("\nDS18S20 , Temp: %3d.%dC", t.inCelsus, t.frac);
+            printf("\n\rDS18S20 , Temp: %3d.%dC", t.inCelsus, t.frac);
             break;
           case 0x00:
             break;
           default:
-            printf("\nUNKNOWN Family:%x (SN: %x%x%x%x%x%x)", r->family, r->code[0], r->code[1], r->code[2],
+            printf("\n\rUNKNOWN Family:%x (SN: %x%x%x%x%x%x)", r->family, r->code[0], r->code[1], r->code[2],
                    r->code[3], r->code[4], r->code[5]);
             break;
         }
         pDelay = 8000000;
       }
-      printf("\n...");
+      printf("\n\r...");
     } else {
       printf("there is no device on the bus");
       pDelay = 8000000;

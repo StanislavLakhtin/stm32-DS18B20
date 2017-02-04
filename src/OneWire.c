@@ -180,39 +180,33 @@ uint8_t bitsToByte(uint8_t *bits) {
   return target_byte;
 }
 
-uint8_t owCRC(uint8_t crc, uint8_t b) {
-  uint8_t p;
-  for (p = 8; p; p--) {
-    crc = (uint8_t) (((crc ^ b) & 1) ? (crc >> 1) ^ 0b10001100 : (crc >> 1));
-    b >>= 1;
-  }
-  return crc;
-}
-
 /* Подсчет CRC8 массива mas длиной Len */
-uint8_t owCRC8( uint8_t *mas, uint8_t Len )
-{
-  uint8_t i,dat,crc,fb,st_byt;
-  st_byt=0; crc=0;
-  do{
-    dat=mas[st_byt];
-    for( i=0; i<8; i++) {  // счетчик битов в байте
+uint8_t owCRC(uint8_t *mas, uint8_t Len) {
+  uint8_t i, dat, crc, fb, st_byt;
+  st_byt = 0;
+  crc = 0;
+  do {
+    dat = mas[st_byt];
+    for (i = 0; i < 8; i++) {  // счетчик битов в байте
       fb = crc ^ dat;
       fb &= 1;
       crc >>= 1;
       dat >>= 1;
-      if( fb == 1 ) crc ^= 0x8c; // полином
+      if (fb == 1) crc ^= 0x8c; // полином
     }
     st_byt++;
-  } while( st_byt < Len ); // счетчик байтов в массиве
+  } while (st_byt < Len); // счетчик байтов в массиве
   return crc;
+}
+
+uint8_t owCRC8(RomCode *rom){
+  return owCRC(rom, 7);
 }
 
 /*
  * return 1 if has got one more address
  * return 0 if hasn't
  * return -1 if error reading happened
- * return -2 if crc error happened
  *
  * переделать на функции обратного вызова для реакции на ошибки
  */
@@ -227,7 +221,7 @@ int hasNextRom(OneWire *ow, uint8_t *ROM) {
   do {
     int byteNum = ui32BitNumber / 8;
     uint8_t *current = (ROM) + byteNum;
-    uint8_t cB, cmp_cB, searchDirection=0;
+    uint8_t cB, cmp_cB, searchDirection = 0;
     owSend(ow, OW_READ); // чтение прямого бита
     cB = owReadSlot(owEchoRead(ow));
     owSend(ow, OW_READ); // чтение инверсного бита
@@ -257,19 +251,20 @@ int hasNextRom(OneWire *ow, uint8_t *ROM) {
     ui32BitNumber++;
   } while (ui32BitNumber < 64);
   ow->lastDiscrepancy = zeroFork;
-  uint8_t crcCheck = owCRC8(ROM, 7);
-  printf("\n CRC %02X, received: %02X", crcCheck, ROM[7]);
   uint8_t i = 0;
-  for (; i <7; i++)
+  for (; i < 7; i++)
     ow->lastROM[i] = ROM[i];
   return ow->lastDiscrepancy > 0;
 }
 
+// Возвращает количество устройств на шине или код ошибки, если значение меньше 0
 int owSearchCmd(OneWire *ow) {
   int device = 0, nextROM;
   owInit(ow);
   do {
     nextROM = hasNextRom(ow, &ow->ids[device]);
+    if (nextROM<0)
+      return -1;
     device++;
   } while (nextROM && device < MAXDEVICES_ON_THE_BUS);
   return device;
@@ -352,22 +347,19 @@ Temperature readTemperature(OneWire *ow, RomCode *rom, bool reSense) {
   Temperature t;
   t.inCelsus = 0x00;
   t.frac = 0x00;
-  int8_t sign;
   uint8_t pad[9];
   Scratchpad_DS18B20 *sp = (Scratchpad_DS18B20 *) &pad;
   Scratchpad_DS18S20 *spP = (Scratchpad_DS18S20 *) &pad;
   switch (rom->family) {
     case DS18B20:
       owReadScratchpadCmd(ow, rom, pad);
-      sign = (int8_t) ((sp->temp_msb & 0xf8) == 0x00 ? 1 : -1);
-      t.inCelsus = sign * (((sp->temp_msb & 0x07) << 4) |
-                           ((sp->temp_lsb >> 4) & 0x0f));
+      t.inCelsus = (int8_t) (sp->temp_msb << 4) |
+                                 (sp->temp_lsb >> 4);
       t.frac = (uint8_t) ((((sp->temp_lsb & 0x0F)) * 10) >> 4);
       break;
     case DS18S20:
       owReadScratchpadCmd(ow, rom, pad);
-      sign = (int8_t) ((spP->temp_msb & 0xff) == 0x00 ? 1 : -1);
-      t.inCelsus = sign * ((spP->temp_lsb >> 1) & 0x7f);
+      t.inCelsus = spP->temp_lsb >> 1;
       t.frac = (uint8_t) 5 * (spP->temp_lsb & 0x01);
       break;
     default:

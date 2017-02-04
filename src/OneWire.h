@@ -44,7 +44,7 @@ volatile uint8_t recvFlag;
 volatile uint16_t rc_buffer[5];
 
 typedef struct {
-  int16_t inCelsus;
+  int8_t inCelsus;
   uint8_t frac;
 } Temperature;
 
@@ -92,6 +92,8 @@ int owSearchCmd(OneWire *ow);
 
 void owSkipRomCmd(OneWire *ow);
 
+uint8_t owCRC8(RomCode *rom);
+
 void owMatchRomCmd(OneWire *ow, RomCode *rom);
 
 void owConvertTemperatureCmd(OneWire *ow, RomCode *rom);
@@ -102,8 +104,6 @@ void owCopyScratchpadCmd(OneWire *ow, RomCode *rom);
 
 void owRecallE2Cmd(OneWire *ow, RomCode *rom);
 
-void owWriteDS18B20ScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl, uint8_t conf);
-
 Temperature readTemperature(OneWire *ow, RomCode *rom, bool reSense);
 
 void owSend(OneWire *ow, uint16_t data);
@@ -113,7 +113,5 @@ void owSendByte(OneWire *ow, uint8_t data);
 uint16_t owEchoRead(OneWire *ow);
 
 void owReadHandler(uint32_t usart);
-
-
 
 #endif //STM32_DS18X20_ONEWIRE_H

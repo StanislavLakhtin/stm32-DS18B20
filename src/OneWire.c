@@ -64,15 +64,15 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
 }
 
 void owInit(OneWire *ow) {
-  int i, k = 0, kk = 0;
-  for (i = 0; i < MAXDEVICES_ON_THE_BUS; i++) {
-    ow->ids[i].crc = 0x00;
-    ow->ids[i].family = 0x00;
-    for (; k < 6; k++)
-      ow->ids[i].code[k] = 0x00;
-    for (; kk < 8; kk++)
-      ow->lastROM[kk] = 0x00;
+  int i=0, k = 0;
+  for (; i < MAXDEVICES_ON_THE_BUS; i++) {
+    uint8_t *r = &ow->ids[i];
+    for (; k < 8; k++)
+      r[k] = 0;
   }
+  k=0;
+  for (; k < 8; k++)
+    ow->lastROM[k] = 0x00;
   ow->lastDiscrepancy = 64;
 
 }

@@ -107,10 +107,15 @@ int main(void) {
       for (; i < devices; i++) {
         RomCode *r = &ow.ids[i];
         Temperature t;
-        char *crcOK = (owCRC8(r)==r->crc)?"CRC OK":"CRC ERROR!";
+        uint8_t crc = owCRC8(r);
+        char *crcOK = (crc == r->crc)?"CRC OK":"CRC ERROR!";
         printf("\n\rdevice %d (SN: %02X/%02X%02X%02X%02X%02X%02X/%02X) ", i, r->family, r->code[5], r->code[4], r->code[3],
                r->code[2], r->code[1], r->code[0], r->crc);
         printf(crcOK);
+        if (crc != r->crc) {
+          printf("\n\r can't read cause CNC error");
+          continue;
+        }
         switch (r->family) {
           case DS18B20:
             // будет возвращено значение предыдущего измерения!

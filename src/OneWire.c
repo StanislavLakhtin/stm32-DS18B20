@@ -67,6 +67,7 @@ void owInit(OneWire *ow) {
   int i=0, k = 0;
   for (; i < MAXDEVICES_ON_THE_BUS; i++) {
     uint8_t *r = &ow->ids[i];
+    k=0;
     for (; k < 8; k++)
       r[k] = 0;
   }

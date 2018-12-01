@@ -44,42 +44,42 @@ volatile uint8_t recvFlag;
 volatile uint16_t rc_buffer[5];
 
 typedef struct {
-  int8_t inCelsus;
-  uint8_t frac;
+    int8_t inCelsus;
+    uint8_t frac;
 } Temperature;
 
 typedef struct {
-  uint8_t family;
-  uint8_t code[6];
-  uint8_t crc;
+    uint8_t family;
+    uint8_t code[6];
+    uint8_t crc;
 } RomCode;
 
 typedef struct {
-  uint8_t crc;
-  uint8_t reserved[3];
-  uint8_t configuration;
-  uint8_t tl;
-  uint8_t th;
-  uint8_t temp_msb;
-  uint8_t temp_lsb;
+    uint8_t crc;
+    uint8_t reserved[3];
+    uint8_t configuration;
+    uint8_t tl;
+    uint8_t th;
+    uint8_t temp_msb;
+    uint8_t temp_lsb;
 } Scratchpad_DS18B20;
 
 typedef struct {
-  uint8_t crc;
-  uint8_t count_per;
-  uint8_t count_remain;
-  uint8_t reserved[2];
-  uint8_t tl;
-  uint8_t th;
-  uint8_t temp_msb;
-  uint8_t temp_lsb;
+    uint8_t crc;
+    uint8_t count_per;
+    uint8_t count_remain;
+    uint8_t reserved[2];
+    uint8_t tl;
+    uint8_t th;
+    uint8_t temp_msb;
+    uint8_t temp_lsb;
 } Scratchpad_DS18S20;
 
 typedef struct {
-  uint32_t usart;
-  RomCode ids[MAXDEVICES_ON_THE_BUS];
-  int lastDiscrepancy;
-  uint8_t lastROM[8];
+    uint32_t usart;
+    RomCode ids[MAXDEVICES_ON_THE_BUS];
+    int lastDiscrepancy;
+    uint8_t lastROM[8];
 } OneWire;
 
 void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART
@@ -98,7 +98,7 @@ void owMatchRomCmd(OneWire *ow, RomCode *rom);
 
 void owConvertTemperatureCmd(OneWire *ow, RomCode *rom);
 
-uint8_t* owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data);
+uint8_t *owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data);
 
 void owCopyScratchpadCmd(OneWire *ow, RomCode *rom);
 

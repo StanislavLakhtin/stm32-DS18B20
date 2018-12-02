@@ -118,8 +118,9 @@ uint8_t getUsartIndex(uint32_t usart) {
             return 3;
         case (UART5):
             return 4;
+        default:
+            return getUsartIndex(USART3);
     }
-    return 2; //default is USART3
 }
 
 void owSend(OneWire *ow, uint16_t data) {

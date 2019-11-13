@@ -1,9 +1,14 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.9)
 
-file(GLOB_RECURSE USER_SOURCES ./*.c ./*.cpp)
+file(GLOB_RECURSE SOURCES *.cpp *.c )
+file(GLOB_RECURSE C_SOURCES *.c )
+set_source_files_properties(C_SOURCES PROPRTIES LANGUAGE C)
 
-add_executable(${PROJECT_NAME}.elf ${USER_SOURCES})
+include_directories(./include)
+
+message(STATUS "SOURCE FILES : ${SOURCES}")
+
+add_executable(${PROJECT_NAME}.elf ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME}.elf opencm3_stm32f1)
 
-add_bin_from_elf(${PROJECT_NAME}.bin ${PROJECT_NAME}.elf )

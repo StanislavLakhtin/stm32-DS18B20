@@ -1,149 +1,110 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/f1/nvic.h>
-#include <stdio.h>
-#include <errno.h>
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/usart.h>
 
-// Должно быть объявлено ДО include "OneWire.h", чтобы был добавлен обработчик соответствующего прерывания
-//#define ONEWIRE_UART5
-//#define ONEWIRE_UART4
-#define ONEWIRE_USART3
-//#define ONEWIRE_USART2
-//#define ONEWIRE_USART1
+#include <ow.h>
 
-//#define MAXDEVICES_ON_THE_BUS 3
-
-#include "OneWire.h"
-
-#define USART_CONSOLE USART2
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+OneWire ow_dev;
 
 int _write(int file, char *ptr, int len);
 
 /* STM32 в 72 MHz. */
 static void clock_setup(void) {
-  rcc_clock_setup_in_hse_8mhz_out_72mhz();
+    rcc_clock_setup_in_hse_8mhz_out_72mhz();
 
-  /* Enable GPIOB, GPIOC, and AFIO clocks. */
-  rcc_periph_clock_enable(RCC_GPIOA);
-  rcc_periph_clock_enable(RCC_GPIOB);
-  rcc_periph_clock_enable(RCC_GPIOC);
+    /* Enable GPIOB, GPIOC, and AFIO clocks. */
+    rcc_periph_clock_enable(RCC_GPIOA);
+    rcc_periph_clock_enable(RCC_GPIOB);
+    rcc_periph_clock_enable(RCC_GPIOC);
 
-  rcc_periph_clock_enable(RCC_AFIO);
+    rcc_periph_clock_enable(RCC_AFIO);
 
-  /* Enable clocks for USARTs. */
-  rcc_periph_clock_enable(RCC_USART2); //включить, если используется отладка
-  rcc_periph_clock_enable(RCC_USART3);
+    /* Enable clocks for USARTs. */
+    rcc_periph_clock_enable(RCC_USART2);
 }
 
-void usart3_isr() {
-  owReadHandler(USART3);
-}
+void usart2_isr() {
+    if (((USART_CR1(USART2) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART2) & USART_SR_RXNE) != 0)) {
 
-int _write(int file, char *ptr, int len) {
-  int i;
-
-  if (file == 1) {
-    for (i = 0; i < len; i++)
-      usart_send_blocking(USART_CONSOLE, ptr[i]);
-    return i;
-  }
-  errno = EIO;
-  return -1;
+        /* Получаем данные из периферии и сбрасываем флаг*/
+        ow_bus_get_echo_data(&ow_dev, usart_recv_blocking(USART2));
+    }
 }
 
 
 static void gpio_setup(void) {
-  gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_10_MHZ,
-                GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART2_TX | GPIO_USART2_RX);
+    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_10_MHZ,
+                  GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART2_TX | GPIO_USART2_RX);
 
-  gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_10_MHZ,
-                GPIO_CNF_OUTPUT_ALTFN_OPENDRAIN, GPIO_USART3_TX | GPIO_USART3_RX);
+    gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_10_MHZ,
+                  GPIO_CNF_OUTPUT_ALTFN_OPENDRAIN, GPIO_USART3_TX | GPIO_USART3_RX);
 
-  gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ,
-                GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
+    gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ,
+                  GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 
-  AFIO_MAPR |= AFIO_MAPR_SWJ_CFG_FULL_SWJ_NO_JNTRST;
+    AFIO_MAPR |= AFIO_MAPR_SWJ_CFG_FULL_SWJ_NO_JNTRST;
 
-  /* Preconf USART2 for output*/
-  // Настраиваем USART для отладки
-  usart_set_baudrate(USART_CONSOLE, 115200);
-  usart_set_databits(USART_CONSOLE, 8);
-  usart_set_stopbits(USART_CONSOLE, USART_STOPBITS_1);
-  usart_set_mode(USART_CONSOLE, USART_MODE_TX_RX);
-  usart_set_parity(USART_CONSOLE, USART_PARITY_NONE);
-  usart_set_flow_control(USART_CONSOLE, USART_FLOWCONTROL_NONE);
-  usart_enable(USART_CONSOLE);
-
-  /* Preconf LED. */
-  gpio_clear(GPIOC, GPIO13);
+    /* Preconf LED. */
+    gpio_clear(GPIOC, GPIO13);
 }
 
-OneWire ow;
+void usart_enable_halfduplex(uint32_t usart) {
+    USART_CR2(usart) &= ~USART_CR2_LINEN;
+    USART_CR2(usart) &= ~USART_CR2_CLKEN;
+    USART_CR3(usart) &= ~USART_CR3_SCEN;
+    USART_CR3(usart) &= ~USART_CR3_IREN;
+    USART_CR3(usart) |= USART_CR3_HDSEL;
+}
+
+/** Метод реализует переключение выбранного USART в нужный режим
+ * @param[in] baud Скорость в бодах (9600, 115200, etc...)
+ */
+
+void onewire_usart_setup(uint32_t baud) {
+    nvic_disable_irq(NVIC_USART2_IRQ);
+    usart_disable(USART2);
+
+    // Настраиваем
+    usart_set_baudrate(USART2, baud);
+    usart_set_databits(USART2, 8);     // 8 bits
+    usart_set_stopbits(USART2, USART_STOPBITS_1);
+    usart_set_mode(USART2, USART_MODE_TX_RX);
+    usart_set_parity(USART2, USART_PARITY_NONE);
+    usart_set_flow_control(USART2, USART_FLOWCONTROL_NONE);
+    usart_enable_halfduplex(USART2);
+
+    usart_enable_rx_interrupt(USART2);
+    usart_disable_tx_interrupt(USART2);
+    //nvic_set_priority(NVIC_USART2_IRQ, 2);
+
+    usart_enable(USART2);
+    nvic_enable_irq(NVIC_USART2_IRQ);
+}
+
+void onewire_send(uint16_t data) {
+    usart_send_blocking(USART2, data);
+    while (!(USART_SR(USART2) & USART_SR_TC));
+}
 
 int main(void) {
 
-  clock_setup();
-  gpio_setup();
+    clock_setup();
+    gpio_setup();
 
-  ow.usart = USART3;
+    ow_dev.usart_setup = onewire_usart_setup;
+    ow_dev.send = onewire_send;
 
-  uint32_t pDelay = 300, i;
-
-  while (1) {
-    if (owResetCmd(&ow) != ONEWIRE_NOBODY) {    // is anybody on the bus?
-      int devices = owSearchCmd(&ow);           // получить ROMid всех устройст на шине или вернуть код ошибки
-      if (devices <= 0) {
-        printf("\n\rError has happened!");
-        pDelay = 8000000;
-        gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
-        for (i = 0; i < pDelay * 4; i++)    /* Wait a bit. */
-            __asm__("nop");
-        continue;
-      }
-      printf("\n\rfound %d devices on 1-wire bus", devices);
-      if (devices < 1)
-        continue; // внезапно что-то могло "оторваться" из датчиков
-      i = 0;
-      for (; i < devices; i++) {
-        RomCode *r = &ow.ids[i];
-        Temperature t;
-        uint8_t crc = owCRC8(r);
-        char *crcOK = (crc == r->crc)?"CRC OK":"CRC ERROR!";
-        printf("\n\rdevice %d (SN: %02X/%02X%02X%02X%02X%02X%02X/%02X) ", i, r->family, r->code[5], r->code[4], r->code[3],
-               r->code[2], r->code[1], r->code[0], r->crc);
-        printf(crcOK);
-        if (crc != r->crc) {
-          printf("\n\r can't read cause CNC error");
-          continue;
-        }
-        switch (r->family) {
-          case DS18B20:
-            // будет возвращено значение предыдущего измерения!
-            t = readTemperature(&ow, &ow.ids[i], true);
-            printf("\n\rDS18B20 , Temp: %3d.%dC", t.inCelsus, t.frac);
-            break;
-          case DS18S20:
-            t = readTemperature(&ow, &ow.ids[i], true);
-            printf("\n\rDS18S20 , Temp: %3d.%dC", t.inCelsus, t.frac);
-            break;
-          case 0x00:
-            break;
-          default:
-            printf("\n\rUNKNOWN Family:%x (SN: %x%x%x%x%x%x)", r->family, r->code[0], r->code[1], r->code[2],
-                   r->code[3], r->code[4], r->code[5]);
-            break;
-        }
-        pDelay = 8000000;
-      }
-      printf("\n\r...");
-    } else {
-      printf("there is no device on the bus");
-      pDelay = 8000000;
+    while (TRUE) {
+        uint8_t rslt = ow_scan(&ow_dev);
+        uint32_t pause = 0xffffff;
+        while (pause--);
     }
-    gpio_toggle(GPIOC, GPIO13);    /* LED on/off */
-    for (i = 0; i < pDelay * 4; i++)    /* Wait a bit. */
-        __asm__("nop");
-  }
 
-  return 0;
+    return 0;
 }
+
+#pragma clang diagnostic pop

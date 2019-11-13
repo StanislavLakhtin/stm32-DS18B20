@@ -2,21 +2,15 @@
     @author Stanislav Lakhtin
     @date   11.07.2016
     @brief  Реализация протокола 1wire на базе библиотеки libopencm3 для микроконтроллера STM32F103
-
             Возможно, библиотека будет корректно работать и на других uK (требуется проверка).
-            Общая идея заключается в использовании аппаратного USART uK для иммитации работы 1wire.
-
+            Общая идея заключается в использовании аппаратного USART/UART uK для иммитации работы 1wire.
             Подключение устройств осуществляется на выбранный USART к TX пину, который должен быть подтянут к линии питания сопротивлением 4.7К.
             Реализация библиотеки осуществляет замыкание RX на TX внутри uK, оставляя ножку RX доступной для использования в других задачах.
-
  */
 #ifndef STM32_DS18X20_ONEWIRE_H
 #define STM32_DS18X20_ONEWIRE_H
 
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/usart.h>
-#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/cm3/common.h>
 
 #define ONEWIRE_NOBODY 0xF0
 #define ONEWIRE_SEARCH 0xF0
@@ -29,8 +23,8 @@
 #define ONEWIRE_COPY_SCRATCHPAD 0x48
 #define ONEWIRE_RECALL_E2 0xB8
 
-#ifndef MAXDEVICES_ON_THE_BUS
-#define MAXDEVICES_ON_THE_BUS 10
+#ifndef ONEWIRE_MAXDEVICES_ON_THE_BUS
+#define ONEWIRE_MAXDEVICES_ON_THE_BUS 10
 #endif
 
 #define DS18B20 0x28
@@ -40,8 +34,17 @@
 #define WIRE_1    0xff
 #define OW_READ   0xff
 
-volatile uint8_t recvFlag;
-volatile uint16_t rc_buffer[5];
+#ifndef FALSE
+#define FALSE 0x00
+#endif
+#ifndef TRUE
+#define TRUE  0x01
+#endif
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 typedef struct {
     int8_t inCelsus;
@@ -75,43 +78,37 @@ typedef struct {
     uint8_t temp_lsb;
 } Scratchpad_DS18S20;
 
+typedef void (*ow_send_fptr_t) (uint16_t data);
+typedef void (*ow_usart_setup_fptr_t) (uint32_t baud);
+
 typedef struct {
-    uint32_t usart;
-    RomCode ids[MAXDEVICES_ON_THE_BUS];
-    int lastDiscrepancy;
-    uint8_t lastROM[8];
+    volatile uint16_t rc_buffer;
+    volatile uint8_t rc_flag;
+    uint8_t ROM_BUFFER[8];
+    uint8_t lastDiscrepancy;
+    uint8_t lastFamilyDiscrepancy;
+    uint8_t lastDeviceFlag;
+    uint8_t hasMoreROM; // flag if MAXDEVICES_ON_THE_BUS is not enough
+    uint8_t devicesQuantity;
+    uint8_t crc8;
+} OWState;
+
+typedef struct {
+    RomCode rom[ONEWIRE_MAXDEVICES_ON_THE_BUS];
+    ow_send_fptr_t send;
+    ow_usart_setup_fptr_t usart_setup;
+    OWState state;
 } OneWire;
 
-void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART
-void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
-                 uint32_t flowcontrol);
+void ow_clear_state(OneWire *ow_dev);
+void ow_bus_get_echo_data(OneWire *ow_dev, uint16_t data);
+uint16_t ow_read_blocking(OneWire * ow_dev);
+uint16_t ow_reset_cmd(OneWire *ow_dev);
+uint8_t ow_find_next_ROM(OneWire *ow_dev);
+uint8_t ow_scan(OneWire * ow_dev);
 
-uint16_t owResetCmd(OneWire *ow);
-
-int owSearchCmd(OneWire *ow);
-
-void owSkipRomCmd(OneWire *ow);
-
-uint8_t owCRC8(RomCode *rom);
-
-void owMatchRomCmd(OneWire *ow, RomCode *rom);
-
-void owConvertTemperatureCmd(OneWire *ow, RomCode *rom);
-
-uint8_t *owReadScratchpadCmd(OneWire *ow, RomCode *rom, uint8_t *data);
-
-void owCopyScratchpadCmd(OneWire *ow, RomCode *rom);
-
-void owRecallE2Cmd(OneWire *ow, RomCode *rom);
-
-Temperature readTemperature(OneWire *ow, RomCode *rom, bool reSense);
-
-void owSend(OneWire *ow, uint16_t data);
-
-void owSendByte(OneWire *ow, uint8_t data);
-
-uint16_t owEchoRead(OneWire *ow);
-
-void owReadHandler(uint32_t usart);
+#ifdef __cplusplus
+}
+#endif
 
 #endif //STM32_DS18X20_ONEWIRE_H

@@ -1,10 +1,10 @@
 set target-async on
 set confirm off
-set history save
 set mem inaccessible-by-default off
 
-target extended-remote /dev/ttyACM0
-mon swdp_scan
-att 1
-load
+target extended-remote /dev/cu.usbmodemC3E687D1
+monitor swdp_scan
+attach 1
+file build/BBB.elf
+
 
